@@ -1,8 +1,8 @@
 
 import React, { useState, useRef } from 'react';
 /* Added missing XCircle to the import list from lucide-react */
-import { Search, Tag, Trash2, ExternalLink, Download, ArrowLeft, Filter, Grid, List as ListIcon, ImageIcon, LayoutTemplate, Copy, Check, Palette, ShieldAlert, Zap, History, FileCode, Terminal, Rocket, Clock, MessageSquare, Send, Loader2, Upload, AlertCircle, Eye, XCircle, Type as TypeIcon, Target } from 'lucide-react';
-import { DesignReference, BrandReference, GeneratedPost, RetouchHistory, UsageLog } from '../types';
+import { Search, Tag, Trash2, ExternalLink, Download, ArrowLeft, Filter, Grid, List as ListIcon, ImageIcon, LayoutTemplate, Copy, Check, Palette, ShieldAlert, Zap, History, FileCode, Terminal, Rocket, Clock, MessageSquare, Send, Loader2, Upload, AlertCircle, Eye, XCircle, Type as TypeIcon, Target, Users, Wand2 } from 'lucide-react';
+import { DesignReference, BrandReference, GeneratedPost, RetouchHistory, UsageLog, CharacterReference, GeneratedCharacterPose } from '../types';
 import { refinePostImage } from '../services/geminiService';
 import AnnotationCanvas from './AnnotationCanvas';
 
@@ -10,21 +10,28 @@ interface LibraryProps {
   references: DesignReference[];
   brands: BrandReference[];
   generatedPosts: GeneratedPost[];
+  characters: CharacterReference[];
+  characterPoses: GeneratedCharacterPose[];
   onDelete: (id: string) => void;
   onDeleteBrand: (id: string) => void;
   onDeletePost: (id: string) => void;
+  onDeleteCharacter: (id: string) => void;
+  onDeleteCharacterPose: (id: string) => void;
   onUpdateReference: (ref: DesignReference) => void;
   onUpdateBrand: (brand: BrandReference) => void;
   onUpdatePost: (post: GeneratedPost) => void;
+  onUpdateCharacter: (char: CharacterReference) => void;
   onBack: () => void;
 }
 
-const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, onDelete, onDeleteBrand, onDeletePost, onUpdateReference, onUpdateBrand, onUpdatePost, onBack }) => {
+const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, characters, characterPoses, onDelete, onDeleteBrand, onDeletePost, onDeleteCharacter, onDeleteCharacterPose, onUpdateReference, onUpdateBrand, onUpdatePost, onUpdateCharacter, onBack }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRef, setSelectedRef] = useState<DesignReference | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<BrandReference | null>(null);
   const [selectedPost, setSelectedPost] = useState<GeneratedPost | null>(null);
-  const [viewMode, setViewMode] = useState<'original' | 'template' | 'brands' | 'generated'>('generated');
+  const [selectedCharacter, setSelectedCharacter] = useState<CharacterReference | null>(null);
+  const [selectedCharacterPose, setSelectedCharacterPose] = useState<GeneratedCharacterPose | null>(null);
+  const [viewMode, setViewMode] = useState<'original' | 'template' | 'brands' | 'generated' | 'characters' | 'character_poses'>('generated');
   const [copied, setCopied] = useState(false);
 
   // Retouch Studio State
@@ -40,6 +47,8 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, o
   const [fullPreview, setFullPreview] = useState<string | null>(null);
   const [isEditingBrand, setIsEditingBrand] = useState(false);
   const [editedBrand, setEditedBrand] = useState<BrandReference | null>(null);
+  const [isEditingCharacter, setIsEditingCharacter] = useState(false);
+  const [editedCharacter, setEditedCharacter] = useState<CharacterReference | null>(null);
 
   // CRUD State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -76,6 +85,16 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, o
   const filteredBrands = brands.filter(b =>
     b.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const filteredCharacters = characters.filter(c =>
+    c.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredCharacterPoses = characterPoses.filter(p => {
+    const char = characters.find(c => c.id === p.characterId);
+    return p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (char?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   const handleRetouch = async () => {
     if (!selectedPost || !retouchInput) return;
@@ -156,6 +175,12 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, o
           </button>
           <button onClick={() => setViewMode('brands')} className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${viewMode === 'brands' ? 'bg-pink-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
             <Palette size={14} /><span>Brands</span>
+          </button>
+          <button onClick={() => setViewMode('characters')} className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${viewMode === 'characters' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+            <Users size={14} /><span>Characters</span>
+          </button>
+          <button onClick={() => setViewMode('character_poses')} className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${viewMode === 'character_poses' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+            <Wand2 size={14} /><span>Poses</span>
           </button>
         </div>
       </div>
@@ -269,6 +294,51 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, o
                 </div>
               </div>
             ))
+        )}
+
+        {viewMode === 'characters' && (
+          filteredCharacters.length === 0 ? <EmptyState icon={<Users size={64} />} label="No characters saved yet." /> :
+            filteredCharacters.map(char => (
+              <div key={char.id} onClick={() => setSelectedCharacter(char)} className="group rounded-[2.5rem] border border-slate-800 bg-slate-900/40 overflow-hidden hover:border-green-500/40 transition-all cursor-pointer">
+                <div className="aspect-[4/5] bg-black">
+                  {char.dna.reference_images.length > 0 ? (
+                    <img src={char.dna.reference_images[0]} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt={char.name} />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-700">
+                      <Users size={64} className="opacity-20" />
+                    </div>
+                  )}
+                  <div className="absolute top-4 right-4"><span className="px-2 py-1 rounded-md bg-green-500/20 text-green-400 text-[8px] font-bold border border-green-500/30 uppercase">Character DNA</span></div>
+                </div>
+                <div className="p-5 flex items-center justify-between border-t border-slate-800/50">
+                  <h4 className="font-bold text-white truncate">{char.name}</h4>
+                  <button onClick={(e) => { e.stopPropagation(); onDeleteCharacter(char.id); }} className="p-2 text-slate-600 hover:text-red-400"><Trash2 size={16} /></button>
+                </div>
+              </div>
+            ))
+        )}
+
+        {viewMode === 'character_poses' && (
+          filteredCharacterPoses.length === 0 ? <EmptyState icon={<Wand2 size={64} />} label="No character poses generated yet." /> :
+            filteredCharacterPoses.map(pose => {
+              const char = characters.find(c => c.id === pose.characterId);
+              return (
+                <div key={pose.id} onClick={() => setSelectedCharacterPose(pose)} className="group rounded-[2.5rem] border border-slate-800 bg-slate-900/40 overflow-hidden hover:border-purple-500/40 transition-all cursor-pointer">
+                  <div className="aspect-[4/5] bg-black">
+                    <img src={pose.generatedImage} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt={pose.name} />
+                    <div className="absolute top-4 right-4"><span className="px-2 py-1 rounded-md bg-purple-500/20 text-purple-400 text-[8px] font-bold border border-purple-500/30 uppercase">Pose</span></div>
+                  </div>
+                  <div className="p-5 border-t border-slate-800/50">
+                    <h4 className="font-bold text-white truncate text-sm mb-1">{pose.name}</h4>
+                    {char && <p className="text-[10px] text-slate-500">Character: {char.name}</p>}
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-[10px] text-slate-600 font-mono uppercase">{new Date(pose.createdAt).toLocaleDateString()}</span>
+                      <button onClick={(e) => { e.stopPropagation(); onDeleteCharacterPose(pose.id); }} className="p-2 text-slate-600 hover:text-red-400"><Trash2 size={16} /></button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
         )}
       </div>
 
@@ -631,6 +701,280 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, o
                       </span>
                     ))}
                     {selectedBrand.dna.forbidden_styles.length === 0 && <span className="text-xs text-slate-600 italic">No restrictions saved.</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedCharacter && (
+        <div className="fixed inset-0 z-[100] bg-[#020617] backdrop-blur-3xl overflow-y-auto animate-in fade-in duration-300">
+          <div className="max-w-7xl mx-auto px-6 py-12">
+            <div className="flex items-center justify-between mb-12 border-b border-slate-800 pb-8">
+              <div className="flex items-center space-x-6">
+                <div className="p-4 rounded-2xl bg-green-500/10 border border-green-500/20 shadow-2xl"><Users size={32} className="text-green-400" /></div>
+                <div>
+                  {isEditingCharacter && editedCharacter ? (
+                    <input
+                      type="text"
+                      className="text-4xl font-bold bg-slate-800 border-none rounded-lg text-white outline-none ring-2 ring-green-500/30 px-3 py-1"
+                      value={editedCharacter.name}
+                      onChange={(e) => setEditedCharacter({ ...editedCharacter, name: e.target.value })}
+                    />
+                  ) : (
+                    <h2 className="text-4xl font-bold text-white">{selectedCharacter.name}</h2>
+                  )}
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.4em] mt-2">Character DNA Profile</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4">
+                {isEditingCharacter ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        if (editedCharacter) {
+                          onUpdateCharacter(editedCharacter);
+                          setSelectedCharacter(editedCharacter);
+                          setIsEditingCharacter(false);
+                        }
+                      }}
+                      className="px-8 py-3.5 rounded-2xl bg-green-600 hover:bg-green-500 transition-all font-bold text-white shadow-xl shadow-green-500/20"
+                    >
+                      Save Changes
+                    </button>
+                    <button onClick={() => setIsEditingCharacter(false)} className="px-6 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 transition-all font-bold text-slate-400">Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        setEditedCharacter(selectedCharacter);
+                        setIsEditingCharacter(true);
+                      }}
+                      className="px-8 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 transition-all font-bold text-slate-300"
+                    >
+                      Edit Profile
+                    </button>
+                    <button onClick={() => setSelectedCharacter(null)} className="px-8 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 transition-all font-bold text-slate-300">Close Profile</button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+              <div className="lg:col-span-5 space-y-8">
+                <div
+                  className="rounded-[3rem] bg-slate-950 border border-slate-800 aspect-[4/5] flex items-center justify-center p-8 shadow-2xl cursor-zoom-in group relative overflow-hidden"
+                  onClick={() => setFullPreview(selectedCharacter.dna.reference_images[0])}
+                >
+                  <img src={selectedCharacter.dna.reference_images[0]} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Character Ref" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Eye size={32} className="text-white" />
+                  </div>
+                  <div className="absolute bottom-6 left-6 right-6">
+                    <div className="flex items-center space-x-2 mb-2"><Users size={12} className="text-green-400" /><span className="text-[10px] font-bold text-slate-400 uppercase">Primary Reference</span></div>
+                  </div>
+                </div>
+
+                <div className="p-8 rounded-[2rem] bg-slate-900/50 border border-slate-800">
+                  <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Reference Gallery</h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    {selectedCharacter.dna.reference_images.slice(1).map((img, idx) => (
+                      <div key={idx} onClick={() => setFullPreview(img)} className="aspect-square rounded-xl overflow-hidden border border-slate-800 cursor-pointer hover:border-green-500/50 transition-all">
+                        <img src={img} className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-7 space-y-8">
+                <div className="p-10 rounded-[3rem] bg-slate-900/50 border border-slate-800 shadow-2xl space-y-8">
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Physical Features</h4>
+                    {isEditingCharacter && editedCharacter ? (
+                      <textarea
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-slate-300 leading-relaxed outline-none ring-1 ring-green-500/20 focus:ring-green-500/50 min-h-[140px]"
+                        value={editedCharacter.dna.physical_features}
+                        onChange={(e) => setEditedCharacter({ ...editedCharacter, dna: { ...editedCharacter.dna, physical_features: e.target.value } })}
+                      />
+                    ) : (
+                      <p className="text-sm text-slate-300 leading-relaxed break-words whitespace-pre-wrap">{selectedCharacter.dna.physical_features}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Visual Details</h4>
+                    {isEditingCharacter && editedCharacter ? (
+                      <textarea
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-slate-300 leading-relaxed outline-none ring-1 ring-green-500/20 focus:ring-green-500/50 min-h-[140px]"
+                        value={editedCharacter.dna.visual_details}
+                        onChange={(e) => setEditedCharacter({ ...editedCharacter, dna: { ...editedCharacter.dna, visual_details: e.target.value } })}
+                      />
+                    ) : (
+                      <p className="text-sm text-slate-300 leading-relaxed break-words whitespace-pre-wrap">{selectedCharacter.dna.visual_details}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Style Notes</h4>
+                    {isEditingCharacter && editedCharacter ? (
+                      <textarea
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-slate-300 leading-relaxed outline-none ring-1 ring-green-500/20 focus:ring-green-500/50 min-h-[100px]"
+                        value={editedCharacter.dna.style_notes}
+                        onChange={(e) => setEditedCharacter({ ...editedCharacter, dna: { ...editedCharacter.dna, style_notes: e.target.value } })}
+                      />
+                    ) : (
+                      <p className="text-sm text-slate-300 leading-relaxed break-words whitespace-pre-wrap">{selectedCharacter.dna.style_notes}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Character Palette</h4>
+                      {isEditingCharacter && editedCharacter && (
+                        <button
+                          onClick={() => setEditedCharacter({ ...editedCharacter, dna: { ...editedCharacter.dna, color_palette: [...editedCharacter.dna.color_palette, '#000000'] } })}
+                          className="text-[10px] font-bold text-green-400 uppercase tracking-widest hover:text-green-300 transition-colors"
+                        >
+                          + Add Color
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                      {(isEditingCharacter && editedCharacter ? editedCharacter.dna.color_palette : selectedCharacter.dna.color_palette).map((color, idx) => (
+                        <div key={idx} className="flex items-center space-x-3 bg-slate-950 p-3 rounded-2xl border border-slate-800 group/color relative">
+                          {isEditingCharacter && editedCharacter ? (
+                            <>
+                              <input
+                                type="color"
+                                className="w-10 h-10 rounded-xl bg-transparent border-none cursor-pointer outline-none"
+                                value={color}
+                                onChange={(e) => {
+                                  const newColors = [...editedCharacter.dna.color_palette];
+                                  newColors[idx] = e.target.value;
+                                  setEditedCharacter({ ...editedCharacter, dna: { ...editedCharacter.dna, color_palette: newColors } });
+                                }}
+                              />
+                              <input
+                                type="text"
+                                className="text-xs font-mono text-slate-400 uppercase bg-transparent border-none w-16 outline-none"
+                                value={color}
+                                onChange={(e) => {
+                                  const newColors = [...editedCharacter.dna.color_palette];
+                                  newColors[idx] = e.target.value;
+                                  setEditedCharacter({ ...editedCharacter, dna: { ...editedCharacter.dna, color_palette: newColors } });
+                                }}
+                              />
+                              <button
+                                onClick={() => {
+                                  const newColors = editedCharacter.dna.color_palette.filter((_, i) => i !== idx);
+                                  setEditedCharacter({ ...editedCharacter, dna: { ...editedCharacter.dna, color_palette: newColors } });
+                                }}
+                                className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover/color:opacity-100 transition-opacity"
+                              >
+                                <XCircle size={12} />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <div className="w-10 h-10 rounded-xl shadow-inner border border-white/10" style={{ backgroundColor: color }} />
+                              <span className="text-xs font-mono text-slate-400 uppercase">{color}</span>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedCharacterPose && (
+        <div className="fixed inset-0 z-[100] bg-[#020617] backdrop-blur-3xl overflow-y-auto animate-in fade-in duration-300">
+          <div className="max-w-7xl mx-auto px-6 py-12">
+            <div className="flex items-center justify-between mb-12 border-b border-slate-800 pb-8">
+              <div className="flex items-center space-x-6">
+                <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 shadow-2xl"><Wand2 size={32} className="text-purple-400" /></div>
+                <div>
+                  <h2 className="text-4xl font-bold text-white">{selectedCharacterPose.name}</h2>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.4em] mt-2">Character Pose detail</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedCharacterPose(null)} className="px-8 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 transition-all font-bold text-slate-300">Close Pose</button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+              <div className="lg:col-span-6">
+                <div
+                  className="rounded-[3rem] bg-slate-950 border border-slate-800 aspect-[4/5] flex items-center justify-center p-8 shadow-2xl cursor-zoom-in group relative overflow-hidden"
+                  onClick={() => setFullPreview(selectedCharacterPose.generatedImage)}
+                >
+                  <img src={selectedCharacterPose.generatedImage} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Generated Pose" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Eye size={32} className="text-white" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-6 space-y-8">
+                <div className="p-10 rounded-[3rem] bg-slate-900/50 border border-slate-800 shadow-2xl space-y-8">
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Linked Character</h4>
+                    <div className="p-6 rounded-2xl bg-slate-950/50 border border-slate-800 flex items-center space-x-4">
+                      {characters.find(c => c.id === selectedCharacterPose.characterId)?.dna.reference_images[0] && (
+                        <div className="w-16 h-16 rounded-xl overflow-hidden border border-slate-800">
+                          <img src={characters.find(c => c.id === selectedCharacterPose.characterId)?.dna.reference_images[0]} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-white font-bold">{characters.find(c => c.id === selectedCharacterPose.characterId)?.name || 'Unknown Character'}</p>
+                        <p className="text-xs text-slate-500 uppercase tracking-widest">Active Identity Anchor</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedCharacterPose.posePrompt && (
+                    <div className="space-y-4">
+                      <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pose Instruction</h4>
+                      <div className="p-6 rounded-2xl bg-slate-950/50 border border-slate-800 font-mono text-xs text-purple-400/80 leading-relaxed">
+                        "{selectedCharacterPose.posePrompt}"
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedCharacterPose.poseReference && (
+                    <div className="space-y-4">
+                      <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pose Reference Anchor</h4>
+                      <div className="aspect-video rounded-2xl overflow-hidden border border-slate-800 bg-black group relative cursor-zoom-in" onClick={() => setFullPreview(selectedCharacterPose.poseReference!)}>
+                        <img src={selectedCharacterPose.poseReference} className="w-full h-full object-contain opacity-60 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                          <Eye size={24} className="text-white" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-4 border-t border-slate-800 flex justify-between items-center text-xs">
+                    <div className="flex flex-col space-y-1">
+                      <span className="text-slate-500 uppercase tracking-widest text-[8px] font-bold">Generated On</span>
+                      <span className="text-slate-300">{new Date(selectedCharacterPose.createdAt).toLocaleString()}</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        onDeleteCharacterPose(selectedCharacterPose.id);
+                        setSelectedCharacterPose(null);
+                      }}
+                      className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all font-bold uppercase text-[10px]"
+                    >
+                      <Trash2 size={14} />
+                      <span>Delete Pose</span>
+                    </button>
                   </div>
                 </div>
               </div>

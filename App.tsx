@@ -1,11 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { Wrench, Star, Rocket, Terminal, Github, Moon, Zap, Palette, ChevronRight, Key, Globe, Settings as SettingsIcon } from 'lucide-react';
-import { AppTool, DesignReference, BrandReference, GeneratedPost } from './types';
+import { Wrench, Star, Rocket, Terminal, Github, Moon, Zap, Palette, ChevronRight, Key, Globe, Settings as SettingsIcon, Users, Wand2, Leaf, Layers } from 'lucide-react';
+import { AppTool, DesignReference, BrandReference, GeneratedPost, CharacterReference, GeneratedCharacterPose } from './types';
 import Builder from './components/Builder';
 import Library from './components/Library';
 import Generator from './components/Generator';
 import BrandLab from './components/BrandLab';
+import CharacterLab from './components/CharacterLab';
+import CharacterStudio from './components/CharacterStudio';
+import CarouselGenerator from './components/CarouselGenerator';
 import Settings from './components/Settings';
 
 const App: React.FC = () => {
@@ -13,6 +16,9 @@ const App: React.FC = () => {
   const [references, setReferences] = useState<DesignReference[]>([]);
   const [brands, setBrands] = useState<BrandReference[]>([]);
   const [generatedPosts, setGeneratedPosts] = useState<GeneratedPost[]>([]);
+  const [characters, setCharacters] = useState<CharacterReference[]>([]);
+  const [characterPoses, setCharacterPoses] = useState<GeneratedCharacterPose[]>([]);
+  const [generatedCarousels, setGeneratedCarousels] = useState<any[]>([]);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [manualKey, setManualKey] = useState('');
   const [isStandalone, setIsStandalone] = useState(false);
@@ -37,10 +43,18 @@ const App: React.FC = () => {
         const resRefs = await fetch('/api/references');
         const resBrands = await fetch('/api/brands');
         const resPosts = await fetch('/api/posts');
+        const resCarousels = await fetch('/api/carousels');
 
         const remoteRefs = await resRefs.json();
         const remoteBrands = await resBrands.json();
         const remotePosts = await resPosts.json();
+        const remoteCarousels = await resCarousels.json().catch(() => []);
+
+        // Load character data
+        const resChars = await fetch('/api/characters');
+        const resCharPoses = await fetch('/api/character_poses');
+        const remoteChars = await resChars.json();
+        const remoteCharPoses = await resCharPoses.json();
 
         // Migration Check
         const localRefs = localStorage.getItem('ikhsan_design_refs');
@@ -69,7 +83,12 @@ const App: React.FC = () => {
           setReferences(remoteRefs);
           setBrands(remoteBrands);
           setGeneratedPosts(remotePosts);
+          setGeneratedCarousels(remoteCarousels);
         }
+
+        // Set character data
+        setCharacters(remoteChars);
+        setCharacterPoses(remoteCharPoses);
       } catch (err) {
         console.error("Failed to load data from storage server:", err);
       }
@@ -119,6 +138,12 @@ const App: React.FC = () => {
     saveData('posts', updated);
   };
 
+  const saveGeneratedCarousel = (carousel: any) => {
+    const updated = [carousel, ...generatedCarousels];
+    setGeneratedCarousels(updated);
+    saveData('carousels', updated);
+  };
+
   const updateGeneratedPost = (post: GeneratedPost) => {
     const updated = generatedPosts.map(p => p.id === post.id ? post : p);
     setGeneratedPosts(updated);
@@ -153,6 +178,36 @@ const App: React.FC = () => {
     const updated = generatedPosts.filter(p => p.id !== id);
     setGeneratedPosts(updated);
     saveData('posts', updated);
+  };
+
+  const saveCharacter = (char: CharacterReference) => {
+    const updated = [char, ...characters];
+    setCharacters(updated);
+    saveData('characters', updated);
+  };
+
+  const updateCharacter = (char: CharacterReference) => {
+    const updated = characters.map(c => c.id === char.id ? char : c);
+    setCharacters(updated);
+    saveData('characters', updated);
+  };
+
+  const deleteCharacter = (id: string) => {
+    const updated = characters.filter(c => c.id !== id);
+    setCharacters(updated);
+    saveData('characters', updated);
+  };
+
+  const saveCharacterPose = (pose: GeneratedCharacterPose) => {
+    const updated = [pose, ...characterPoses];
+    setCharacterPoses(updated);
+    saveData('character_poses', updated);
+  };
+
+  const deleteCharacterPose = (id: string) => {
+    const updated = characterPoses.filter(p => p.id !== id);
+    setCharacterPoses(updated);
+    saveData('character_poses', updated);
   };
 
   if (hasKey === false) {
@@ -223,12 +278,17 @@ const App: React.FC = () => {
             references={references}
             brands={brands}
             generatedPosts={generatedPosts}
+            characters={characters}
+            characterPoses={characterPoses}
             onDelete={deleteReference}
             onDeleteBrand={deleteBrand}
             onDeletePost={deleteGeneratedPost}
+            onDeleteCharacter={deleteCharacter}
+            onDeleteCharacterPose={deleteCharacterPose}
             onUpdateReference={updateReference}
             onUpdateBrand={updateBrand}
             onUpdatePost={updateGeneratedPost}
+            onUpdateCharacter={updateCharacter}
             onBack={() => setActiveTool(AppTool.LANDING)}
           />
         );
@@ -237,12 +297,27 @@ const App: React.FC = () => {
           <Generator
             references={references}
             brands={brands}
+            characters={characters}
             onSavePost={saveGeneratedPost}
+            onBack={() => setActiveTool(AppTool.LANDING)}
+          />
+        );
+      case AppTool.CAROUSEL_GENERATOR:
+        return (
+          <CarouselGenerator
+            references={references}
+            brands={brands}
+            characters={characters}
+            onSave={saveGeneratedCarousel}
             onBack={() => setActiveTool(AppTool.LANDING)}
           />
         );
       case AppTool.BRAND_LAB:
         return <BrandLab onSave={saveBrand} onBack={() => setActiveTool(AppTool.LANDING)} />;
+      case AppTool.CHARACTER_LAB:
+        return <CharacterLab onSave={saveCharacter} onBack={() => setActiveTool(AppTool.LANDING)} brands={brands} />;
+      case AppTool.CHARACTER_STUDIO:
+        return <CharacterStudio characters={characters} onSave={saveCharacterPose} onBack={() => setActiveTool(AppTool.LANDING)} />;
       case AppTool.SETTINGS:
         return (
           <Settings
@@ -259,20 +334,23 @@ const App: React.FC = () => {
         return (
           <div className="max-w-6xl mx-auto px-6 py-12">
             <header className="mb-16 text-center">
-              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 mb-4">
-                <Zap size={14} className="text-blue-400" />
-                <span className="text-xs font-semibold text-blue-400 uppercase tracking-widest">Production Lab Standalone</span>
+              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-green-500/10 border border-green-500/20 mb-4">
+                <Leaf size={14} className="text-green-400" />
+                <span className="text-xs font-semibold text-green-400 uppercase tracking-widest">Weed Labs Standalone</span>
               </div>
-              <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-white via-blue-200 to-blue-500 bg-clip-text text-transparent">
-                Creative Powerhouse
+              <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-white via-green-200 to-green-500 bg-clip-text text-transparent">
+                Weed Labs
               </h1>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <ToolCard icon={<Wrench className="text-blue-400" />} title="Design Builder" desc="Extract Structural DNA." onClick={() => setActiveTool(AppTool.BUILDER)} accent="blue" />
               <ToolCard icon={<Palette className="text-pink-400" />} title="Brand Identity" desc="Save Color DNA." onClick={() => setActiveTool(AppTool.BRAND_LAB)} accent="pink" />
+              <ToolCard icon={<Users className="text-green-400" />} title="Character Lab" desc="Extract Character DNA." onClick={() => setActiveTool(AppTool.CHARACTER_LAB)} accent="green" />
               <ToolCard icon={<Star className="text-cyan-400" />} title="Inspo Library" desc="Manage Vault." onClick={() => setActiveTool(AppTool.LIBRARY)} accent="cyan" />
               <ToolCard icon={<Rocket className="text-indigo-400" />} title="Post Generator" desc="Deploy & Remix." onClick={() => setActiveTool(AppTool.GENERATOR)} accent="indigo" />
+              <ToolCard icon={<Layers className="text-blue-400" />} title="Carousel Generator" desc="Multiple Slides." onClick={() => setActiveTool(AppTool.CAROUSEL_GENERATOR)} accent="blue" />
+              <ToolCard icon={<Wand2 className="text-purple-400" />} title="Character Studio" desc="Generate Poses." onClick={() => setActiveTool(AppTool.CHARACTER_STUDIO)} accent="purple" />
             </div>
 
             {/* Removed Configure API Key button from bottom */}
@@ -285,8 +363,8 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-[#020617] text-slate-100">
       <nav className="border-b border-slate-800 bg-[#020617]/80 backdrop-blur-md sticky top-0 z-50 px-6 h-16 flex items-center justify-between">
         <div onClick={() => setActiveTool(AppTool.LANDING)} className="flex items-center space-x-3 cursor-pointer">
-          <Zap size={20} className="text-blue-500" />
-          <span className="font-bold text-lg tracking-tight">IKHSAN'S <span className="text-blue-500">LAB</span></span>
+          <Leaf size={24} className="text-green-500 fill-green-500/20" />
+          <span className="font-bold text-xl tracking-tighter italic">WEED <span className="text-green-500">LABS</span></span>
         </div>
 
         <button

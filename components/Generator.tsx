@@ -1,20 +1,24 @@
 
 import React, { useState } from 'react';
 import { Rocket, Sparkles, ArrowLeft, ChevronDown, ImageIcon, Loader2, Copy, Check, Zap, AlertCircle, RefreshCw, Send, Palette, XCircle, Layers, Save, Target, LayoutTemplate, FileCode, Eye } from 'lucide-react';
-import { DesignReference, BrandReference, RemixIntensity, ContentBrief, AspectRatio, GeneratedPost } from '../types';
-import { generatePostFromReference, generateRemixImage, refinePostImage } from '../services/geminiService';
+import { DesignReference, BrandReference, RemixIntensity, ContentBrief, AspectRatio, GeneratedPost, CharacterReference } from '../types';
+import { generatePostFromReference, generateRemixImage, refinePostImage, getPostPromptData } from '../services/geminiService';
 import AnnotationCanvas from './AnnotationCanvas';
+import PromptPreviewModal from './PromptPreviewModal';
+import { PromptData } from '../types';
 
 interface GeneratorProps {
   references: DesignReference[];
   brands: BrandReference[];
+  characters: CharacterReference[];
   onSavePost: (post: GeneratedPost) => void;
   onBack: () => void;
 }
 
-const Generator: React.FC<GeneratorProps> = ({ references, brands, onSavePost, onBack }) => {
+const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, onSavePost, onBack }) => {
   const [selectedId, setSelectedId] = useState<string>('');
   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
+  const [selectedCharacterId, setSelectedCharacterId] = useState<string>('');
   const [intensity, setIntensity] = useState<RemixIntensity>('strict');
   const [carouselMode, setCarouselMode] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -40,10 +44,12 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, onSavePost, o
   const [isAnnotating, setIsAnnotating] = useState(false);
   const [annotationSketch, setAnnotationSketch] = useState<string | null>(null);
   const [fullPreview, setFullPreview] = useState<string | null>(null);
+  const [promptPreview, setPromptPreview] = useState<PromptData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const selectedRef = references.find(r => r.id === selectedId);
   const selectedBrand = brands.find(b => b.id === selectedBrandId);
+  const selectedCharacter = characters.find(c => c.id === selectedCharacterId);
 
   const handleGenerate = async () => {
     if (!selectedRef) return;
@@ -65,7 +71,8 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, onSavePost, o
         selectedRef.jsonSpec,
         finalBrief,
         intensity,
-        selectedBrand?.dna
+        selectedBrand?.dna,
+        selectedCharacter?.dna
       );
       setResultText(report);
 
@@ -80,6 +87,24 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, onSavePost, o
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePreviewPrompt = () => {
+    if (!selectedRef) return;
+    const finalBrief: ContentBrief = {
+      ...brief,
+      slide_number: carouselMode ? brief.slide_number : undefined,
+      total_slides: carouselMode ? brief.total_slides : undefined,
+      structured_content: precisionMode ? structuredData : undefined
+    };
+    const data = getPostPromptData(
+      selectedRef.jsonSpec,
+      finalBrief,
+      intensity,
+      selectedBrand?.dna,
+      selectedCharacter?.dna
+    );
+    setPromptPreview(data);
   };
 
   const handleSaveResult = () => {
@@ -188,6 +213,29 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, onSavePost, o
                     </div>
                   )}
                 </div>
+
+                {selectedRef?.jsonSpec.structural_rules.has_character_slot && (
+                  <div className="flex flex-col space-y-2 animate-in slide-in-from-top-2 duration-500">
+                    <select className="w-full px-4 py-3 bg-slate-800 border border-green-500/30 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500/50" value={selectedCharacterId} onChange={(e) => setSelectedCharacterId(e.target.value)}>
+                      <option value="" className="bg-slate-900">Deploy Character DNA...</option>
+                      {characters.map(c => <option key={c.id} value={c.id} className="bg-slate-900">{c.name}</option>)}
+                    </select>
+                    {selectedCharacter && (
+                      <div
+                        className="h-24 w-full rounded-2xl border border-green-500/20 overflow-hidden bg-black animate-in slide-in-from-top-2 duration-300 flex items-center justify-center cursor-pointer group/char relative"
+                        onClick={() => setFullPreview(selectedCharacter.dna.reference_images[0])}
+                      >
+                        <img src={selectedCharacter.dna.reference_images[0]} className="w-full h-full object-cover opacity-60 group-hover/char:opacity-100 transition-opacity" alt="Preview" />
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/char:opacity-100 transition-opacity bg-black/40">
+                          <Eye size={18} className="text-white" />
+                        </div>
+                        <div className="absolute top-2 right-2 flex space-x-1">
+                          <span className="bg-green-500/20 text-green-400 text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-widest border border-green-500/30">Identity Locked</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -289,10 +337,20 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, onSavePost, o
                   </div>
                 </div>
 
-                <button onClick={handleGenerate} disabled={loading || !selectedId || !brief.topic} className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center space-x-3 transition-all ${loading ? 'bg-slate-800 text-slate-500' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl hover:shadow-indigo-500/20'}`}>
-                  {loading ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
-                  <span>{loading ? 'SYNTHESIZING...' : 'Deploy Content to Lab'}</span>
-                </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={handlePreviewPrompt}
+                    disabled={!selectedId || !brief.topic}
+                    className="py-4 rounded-2xl font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all flex items-center justify-center space-x-2"
+                  >
+                    <Eye size={18} />
+                    <span>View Prompt</span>
+                  </button>
+                  <button onClick={handleGenerate} disabled={loading || !selectedId || !brief.topic} className={`py-4 rounded-2xl font-bold flex items-center justify-center space-x-3 transition-all ${loading ? 'bg-slate-800 text-slate-500' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl hover:shadow-indigo-500/20'}`}>
+                    {loading ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
+                    <span>{loading ? 'SYNTHESIZING...' : 'Deploy'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -400,6 +458,14 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, onSavePost, o
           </button>
           <img src={fullPreview} className="max-w-full max-h-full object-contain shadow-2xl rounded-lg border border-white/10" alt="Full Preview" />
         </div>
+      )}
+
+      {promptPreview && (
+        <PromptPreviewModal
+          data={promptPreview}
+          onClose={() => setPromptPreview(null)}
+          title="Post Generator Prompt"
+        />
       )}
     </div>
   );

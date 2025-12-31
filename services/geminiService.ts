@@ -1,6 +1,6 @@
-
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
-import { DesignPromptJson, ContentBrief, BrandDNA, AspectRatio, UsageLog } from "../types";
+import { DesignPromptJson, ContentBrief, BrandDNA, AspectRatio, UsageLog, CharacterDNA, CharacterArtStyle, PromptData } from "../types";
+
 
 const PRICING = {
   'flash': { input: 0.075 / 1000000, output: 0.30 / 1000000 },
@@ -97,7 +97,8 @@ export const analyzeDesign = async (imageB64: string, userNotes?: string): Promi
       "typography_system": "Detailed description of font pairing and weights",
       "color_grammar": "Palette description with hex codes if visible",
       "composition_map": "Map of element positioning (e.g., Top-Left Text, Bottom-Right Graphic)",
-      "aesthetic_motifs": "Visual details like 'Grainy texture, 3D elements, paper tear effect'"
+      "aesthetic_motifs": "Visual details like 'Grainy texture, 3D elements, paper tear effect'",
+      "has_character_slot": true
     },
     "layout_constraints": {
       "forbidden_elements": ["List of things that would break this style"],
@@ -114,6 +115,7 @@ export const analyzeDesign = async (imageB64: string, userNotes?: string): Promi
     "base_visual_dna_prompt": "A highly descriptive prompt for an image generator to recreate the LAYOUT and STYLE of this image but without the specific text. Describe the composition, textures, lighting, and placement of elements clearly."
   }
   
+  IMPORTANT: The 'has_character_slot' should be TRUE if there is a mascot, character, or prominent human-like figure in the design that serves as a focal point.
   IMPORTANT: Do not use generic words like 'Standard' or 'Unknown'. Be descriptive.` };
 
   const response = await ai.models.generateContent({
@@ -209,24 +211,29 @@ export const generateTemplateImage = async (jsonSpec: DesignPromptJson, ratio: A
   throw new Error("Validation render failed.");
 };
 
-export const generatePostFromReference = async (
+export const getPostPromptData = (
   reference: DesignPromptJson,
   brief: ContentBrief,
   intensity: string,
-  brandOverride?: BrandDNA
-): Promise<{ report: string, finalVisualPrompt: string, usage: UsageLog }> => {
-  const ai = getAI();
+  brandOverride?: BrandDNA,
+  characterDNA?: CharacterDNA
+): PromptData => {
   const brandContext = brandOverride
     ? `BRAND RULES: ${JSON.stringify(brandOverride)}`
     : "Use original design colors.";
 
   const carouselCtx = brief.slide_number ? `This is slide ${brief.slide_number} of a ${brief.total_slides} slide carousel. Adapt layout accordingly.` : "";
 
-  const prompt = `Create a new post remix. 
+  const characterCtx = characterDNA
+    ? `CHARACTER DNA: ${JSON.stringify(characterDNA)}. You MUST include this character in the design. Use its physical description and color palette. This is an IDENTITY LOCKED generation for the character.`
+    : "";
+
+  const text = `Create a new post remix. 
   SOURCE DNA: ${JSON.stringify(reference)}
   NEW BRIEF: ${JSON.stringify(brief)}
   ${carouselCtx}
   ${brandContext}
+  ${characterCtx}
   INTENSITY: ${intensity}
  
   Return a production report then ---PROMPT_START--- then a single-line visual prompt that includes the layout logic of the source DNA but with the new content from the brief.
@@ -234,9 +241,22 @@ export const generatePostFromReference = async (
   ${brief.structured_content ? `PRIORITY CONTENT MAPPING: The user provided specific text for these slots. Use them exactly: ${JSON.stringify(brief.structured_content)}` : ''}
   `;
 
+  return { text, images: [] };
+};
+
+export const generatePostFromReference = async (
+  reference: DesignPromptJson,
+  brief: ContentBrief,
+  intensity: string,
+  brandOverride?: BrandDNA,
+  characterDNA?: CharacterDNA
+): Promise<{ report: string, finalVisualPrompt: string, usage: UsageLog }> => {
+  const ai = getAI();
+  const promptData = getPostPromptData(reference, brief, intensity, brandOverride, characterDNA);
+
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: prompt
+    contents: promptData.text
   });
 
   const raw = response.text || '';
@@ -245,11 +265,19 @@ export const generatePostFromReference = async (
   return { report: report.trim(), finalVisualPrompt: finalPrompt?.trim() || '', usage: usageLog };
 };
 
+export const getRemixPromptData = (visualPrompt: string, ratio: AspectRatio): PromptData => {
+  return {
+    text: `${visualPrompt}. Aspect Ratio: ${ratio}. Professional graphic design.`,
+    images: []
+  };
+};
+
 export const generateRemixImage = async (visualPrompt: string, ratio: AspectRatio): Promise<{ image: string, usage: UsageLog }> => {
   const ai = getAI();
+  const promptData = getRemixPromptData(visualPrompt, ratio);
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-image-preview',
-    contents: { parts: [{ text: `${visualPrompt}. Aspect Ratio: ${ratio}. Professional graphic design.` }] },
+    contents: { parts: [{ text: promptData.text }] },
     config: { imageConfig: { aspectRatio: ratio } },
   });
 
@@ -322,4 +350,202 @@ export const refinePostImage = async (
     if (part.inlineData) return { image: `data:image/png;base64,${part.inlineData.data}`, usage: usageLog };
   }
   throw new Error("Refinement failed to render.");
+};
+
+export const analyzeCharacter = async (imagesB64: string[]): Promise<{ dna: CharacterDNA, usage: UsageLog }> => {
+  const ai = getAI();
+
+  const imageParts = imagesB64.map(img => ({
+    inlineData: { mimeType: 'image/jpeg', data: img.split(',')[1] || img }
+  }));
+
+  const textPart = {
+    text: `You are an expert Character Designer. 
+    Analyze the provided images to extract a consistent CHARACTER DNA profile. 
+    Focus on identifying the SAME character across all images.
+    
+    Output Format:
+    Return ONLY a JSON object:
+    {
+      "character_name": "string",
+      "physical_features": "Detailed description",
+      "visual_details": "Facial features, accessories, textures",
+      "color_palette": ["#hex1", "#hex2"],
+      "style_notes": "Art style, rendering technique",
+      "reference_images": []
+    }`
+  };
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: { parts: [...imageParts, textPart] },
+    config: { responseMimeType: "application/json" }
+  });
+
+  const text = response.text || '';
+  if (!text.trim()) throw new Error("No response from Character Lab.");
+
+  try {
+    const dna = JSON.parse(extractJsonFromText(text)) as CharacterDNA;
+    dna.reference_images = imagesB64;
+    const usageLog = await recordUsage('Character Lab', 'gemini-3-flash-preview', response);
+    return { dna, usage: usageLog };
+  } catch (e) {
+    throw new Error("Character Lab returned invalid JSON format.");
+  }
+};
+
+export const getTurnaroundPromptData = (
+  characterDNA: CharacterDNA,
+  aspectRatio: AspectRatio = '1:1'
+): PromptData => {
+  const colorConstraint = `
+STRICT COLOR ENFORCEMENT:
+- You MUST USE these colors: ${characterDNA.color_palette.join(', ')}
+- DO NOT introduce erratic colors unless explicitly listed.
+- The character MUST appear exactly as described in the palette.
+- Lighting should be neutral.`;
+
+  const artStyleLogic = characterDNA.assigned_art_style && characterDNA.assigned_art_style !== 'original'
+    ? `ART STYLE TRANSFORMATION: Transform the character into a ${characterDNA.assigned_art_style} version. 
+- Preserve the core character traits (facial structure, specific accessories, personality).
+- Adapt the medium to ${characterDNA.assigned_art_style}${characterDNA.assigned_art_style === 'claymorphism' ? ' (high-quality 3D claymorphic style. Soft, matte textures, rounded edges, simplified shapes, and tactile clay-like surfaces. Professional 3D render aesthetics)' : ''}.`
+    : `ART STYLE: Maintain the original art style from the reference images.`;
+
+  const text = `
+CHARACTER SPECIFICATIONS:
+- Name: ${characterDNA.character_name}
+- Physical Features: ${characterDNA.physical_features}
+- Visual Details: ${characterDNA.visual_details}
+- Color Palette: ${characterDNA.color_palette.join(', ')}
+- Style: ${characterDNA.style_notes}
+
+${colorConstraint}
+${artStyleLogic}
+
+IDENTITY LOCK: This is an "Identity Locked" generation. The character's face and signature features MUST NOT deviate from the primary reference image.
+
+REQUIRED: Generate a professional 2x4 grid turnaround reference sheet (8 views: front, back, side, 3/4 angles).
+Maintain 100% character consistency across all 8 views. Clean background. Professional quality.
+
+Aspect Ratio: ${aspectRatio}`;
+
+  return { text, images: characterDNA.reference_images || [] };
+};
+
+export const generateCharacterTurnaround = async (
+  characterDNA: CharacterDNA,
+  aspectRatio: AspectRatio = '1:1'
+): Promise<{ image: string, usage: UsageLog }> => {
+  const ai = getAI();
+  const promptData = getTurnaroundPromptData(characterDNA, aspectRatio);
+
+  const parts: any[] = [];
+  if (promptData.images.length > 0) {
+    const primaryRef = promptData.images[0];
+    parts.push({
+      inlineData: {
+        mimeType: 'image/jpeg',
+        data: primaryRef.split(',')[1] || primaryRef
+      }
+    });
+  }
+
+  parts.push({ text: promptData.text });
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-image-preview',
+    contents: { parts },
+    config: { imageConfig: { aspectRatio } },
+  });
+
+  const resultParts = response.candidates?.[0]?.content?.parts;
+  if (!resultParts) throw new Error("Turnaround generation failed.");
+
+  const usageLog = await recordUsage('Character Lab', 'gemini-3-pro-image-preview', response);
+  for (const part of resultParts) {
+    if (part.inlineData) return { image: `data:image/png;base64,${part.inlineData.data}`, usage: usageLog };
+  }
+  throw new Error("Turnaround generation failed to render.");
+};
+
+export const getPosePromptData = (
+  characterDNA: CharacterDNA,
+  poseReference?: string,
+  posePrompt?: string,
+  aspectRatio: AspectRatio = '1:1'
+): PromptData => {
+  const colorConstraint = `
+STRICT COLOR ENFORCEMENT:
+- You MUST USE these colors: ${characterDNA.color_palette.join(', ')}
+- The character MUST appear exactly as described in the palette.`;
+
+  const artStyleLogic = characterDNA.assigned_art_style && characterDNA.assigned_art_style !== 'original'
+    ? `ART STYLE: ${characterDNA.assigned_art_style}. Preserve core face/identity but in this style medium.${characterDNA.assigned_art_style === 'claymorphism' ? ' 3D claymorphic style: matte textures, rounded edges, tactile clay surfaces.' : ''}`
+    : `STYLE: ${characterDNA.style_notes}`;
+
+  const characterDescription = `
+CHARACTER SPECIFICATIONS:
+- Name: ${characterDNA.character_name}
+- Physical Features: ${characterDNA.physical_features}
+- Visual Details: ${characterDNA.visual_details}
+- Color Palette: ${characterDNA.color_palette.join(', ')}
+${artStyleLogic}
+${colorConstraint}
+
+IDENTITY LOCK: Maintain 100% character consistency. Use the provided Character Reference image as the source of truth for face and features.
+  `;
+
+  let poseInstruction = '';
+  const images: string[] = [];
+
+  if (characterDNA.reference_images && characterDNA.reference_images.length > 0) {
+    images.push(characterDNA.reference_images[0]);
+  }
+
+  if (poseReference) {
+    images.push(poseReference);
+    poseInstruction = `Recreate the character (from image 1) in the EXACT POSE shown in image 2.`;
+  } else if (posePrompt) {
+    poseInstruction = `Pose the character (from image 1) as follows: ${posePrompt}`;
+  } else {
+    poseInstruction = `Show the character (from image 1) in a neutral standing pose.`;
+  }
+
+  const text = `${characterDescription}\n\nPOSE INSTRUCTION:\n${poseInstruction}\n\nClean background. Aspect Ratio: ${aspectRatio}`;
+  return { text, images };
+};
+
+export const generateCharacterPose = async (
+  characterDNA: CharacterDNA,
+  poseReference?: string,
+  posePrompt?: string,
+  aspectRatio: AspectRatio = '1:1'
+): Promise<{ image: string, usage: UsageLog }> => {
+  const ai = getAI();
+  const promptData = getPosePromptData(characterDNA, poseReference, posePrompt, aspectRatio);
+
+  const parts: any[] = [];
+  promptData.images.forEach((img, idx) => {
+    parts.push({
+      inlineData: { mimeType: 'image/jpeg', data: img.split(',')[1] || img }
+    });
+  });
+
+  parts.push({ text: promptData.text });
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-image-preview',
+    contents: { parts },
+    config: { imageConfig: { aspectRatio } },
+  });
+
+  const resultParts = response.candidates?.[0]?.content?.parts;
+  if (!resultParts) throw new Error("Character pose generation failed.");
+
+  const usageLog = await recordUsage('Character Studio', 'gemini-3-pro-image-preview', response);
+  for (const part of resultParts) {
+    if (part.inlineData) return { image: `data:image/png;base64,${part.inlineData.data}`, usage: usageLog };
+  }
+  throw new Error("Character pose generation failed to render.");
 };

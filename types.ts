@@ -1,5 +1,7 @@
 
 export type AspectRatio = '1:1' | '9:16' | '16:9' | '4:3' | '3:4';
+export type CharacterArtStyle = 'original' | 'plushy' | 'pixel_art' | 'chibi' | 'animated' | 'futuristic_robot' | 'claymorphism';
+
 
 declare global {
   interface Window {
@@ -23,6 +25,7 @@ export interface VisualStyle {
   color_grammar: string;
   composition_map: string;
   aesthetic_motifs: string;
+  has_character_slot?: boolean; // NEW: Indicates if layout expects a character/mascot
 }
 
 export interface BrandDNA {
@@ -60,6 +63,30 @@ export interface ContentBrief {
   slide_number?: number;
   total_slides?: number;
   structured_content?: Record<string, string>;
+  characterId?: string; // Optional character ID for generation
+}
+
+export interface CarouselSlide {
+  id: string;
+  slideNumber: number;
+  copyBrief: string;
+  styleBrief: string;
+  generatedImage?: string;
+}
+
+export interface GeneratedCarousel {
+  id: string;
+  name: string;
+  slides: CarouselSlide[];
+  blueprintId: string;
+  brandId?: string;
+  characterId?: string;
+  createdAt: number;
+}
+
+export interface PromptData {
+  text: string;
+  images: string[];
 }
 
 export interface RetouchHistory {
@@ -101,12 +128,45 @@ export interface BrandReference {
   createdAt: number;
 }
 
+export interface CharacterDNA {
+  character_name: string;
+  physical_features: string;
+  visual_details: string;
+  color_palette: string[];
+  style_notes: string;
+  reference_images: string[];
+  linked_brand_id?: string;
+  assigned_art_style?: CharacterArtStyle;
+  identity_lock?: boolean;
+}
+
+export interface CharacterReference {
+  id: string;
+  name: string;
+  sourceImages: string[];
+  dna: CharacterDNA;
+  createdAt: number;
+}
+
+export interface GeneratedCharacterPose {
+  id: string;
+  name: string;
+  characterId: string;
+  poseReference?: string;
+  posePrompt?: string;
+  generatedImage: string;
+  createdAt: number;
+}
+
 export enum AppTool {
   LANDING = 'landing',
   BUILDER = 'builder',
   LIBRARY = 'library',
   GENERATOR = 'generator',
+  CAROUSEL_GENERATOR = 'carousel_generator',
   BRAND_LAB = 'brand_lab',
+  CHARACTER_LAB = 'character_lab',
+  CHARACTER_STUDIO = 'character_studio',
   SETTINGS = 'settings'
 }
 
@@ -115,7 +175,7 @@ export type RemixIntensity = 'strict' | 'light' | 'heavy';
 export interface UsageLog {
   id: string;
   timestamp: number;
-  feature: 'Design Builder DNA' | 'Design Builder Visual' | 'Brand Lab' | 'Post Generator' | 'Production Studio';
+  feature: 'Design Builder DNA' | 'Design Builder Visual' | 'Brand Lab' | 'Post Generator' | 'Production Studio' | 'Character Lab' | 'Character Studio';
   model: string;
   inputTokens: number;
   outputTokens: number;
