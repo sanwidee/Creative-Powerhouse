@@ -68,7 +68,10 @@ const Settings: React.FC<SettingsProps> = ({ onBack, onUpdateKey, currentKey }) 
                         <ArrowLeft size={20} />
                     </button>
                     <div>
-                        <h2 className="text-3xl font-bold tracking-tight">System Settings</h2>
+                        <div className="flex items-center space-x-3 mb-1">
+                            <img src="./logo.png" className="w-6 h-6 object-contain" />
+                            <h2 className="text-3xl font-black tracking-tighter italic uppercase text-white">CHAMBER <span className="text-green-500">SETTINGS</span></h2>
+                        </div>
                         <p className="text-slate-400">Configure credentials and monitor resource consumption.</p>
                     </div>
                 </div>

@@ -1,6 +1,6 @@
 
-import React, { useState, useRef } from 'react';
-import { Users, Upload, Loader2, Sparkles, Save, ArrowLeft, XCircle, CheckCircle2, AlertCircle, Palette as PaletteIcon, Eye } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Users, Upload, Loader2, Sparkles, Save, ArrowLeft, XCircle, CheckCircle2, AlertCircle, Palette as PaletteIcon, Eye, History } from 'lucide-react';
 import { analyzeCharacter, generateCharacterTurnaround, getTurnaroundPromptData } from '../services/geminiService';
 import { CharacterReference, CharacterDNA, BrandReference, PromptData } from '../types';
 import PromptPreviewModal from './PromptPreviewModal';
@@ -9,10 +9,12 @@ interface CharacterLabProps {
     onSave: (ref: CharacterReference) => void;
     onBack: () => void;
     brands?: BrandReference[];
+    characters?: CharacterReference[];
 }
 
-const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = [] }) => {
+const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = [], characters = [] }) => {
     const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+    const [selectedCharacterId, setSelectedCharacterId] = useState<string>('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [dna, setDna] = useState<CharacterDNA | null>(null);
     const [turnaroundImage, setTurnaroundImage] = useState<string>('');
@@ -21,6 +23,26 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
     const [promptPreview, setPromptPreview] = useState<PromptData | null>(null);
     const [status, setStatus] = useState<'idle' | 'analyzing' | 'generating' | 'success' | 'error'>('idle');
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Load character DNA if selected
+    useEffect(() => {
+        if (selectedCharacterId) {
+            const char = characters.find(c => c.id === selectedCharacterId);
+            if (char) {
+                setDna(char.dna);
+                setCharacterName(`${char.name} (Remix)`);
+                setUploadedImages(char.sourceImages || []);
+                setTurnaroundImage(char.dna.reference_images?.[0] || '');
+                // Don't auto-set status to success, users still need to click "Remix"
+            }
+        } else {
+            setDna(null);
+            setCharacterName('');
+            setUploadedImages([]);
+            setTurnaroundImage('');
+            setStatus('idle');
+        }
+    }, [selectedCharacterId, characters]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
@@ -38,6 +60,7 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
 
         Promise.all(readers).then(results => {
             setUploadedImages(prev => [...prev, ...results].slice(0, 10));
+            setSelectedCharacterId(''); // Reset selection if new files are uploaded
         });
     };
 
@@ -46,22 +69,28 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
     };
 
     const handleAnalyze = async (forcedStyle?: CharacterDNA['assigned_art_style']) => {
-        if (uploadedImages.length < 1) {
-            alert('Please upload at least 1 image for character analysis.');
+        const targetStyle = forcedStyle || selectedStyle;
+
+        if (!selectedCharacterId && uploadedImages.length < 1) {
+            alert('Please upload reference images or select an existing character.');
             return;
         }
 
-        const targetStyle = forcedStyle || selectedStyle;
         setIsAnalyzing(true);
-        setStatus('analyzing');
+        setStatus(selectedCharacterId ? 'generating' : 'analyzing');
+
         try {
-            // Step 1: Extract DNA (only if not already extracted or if we want fresh analysis)
+            // Step 1: Extract DNA (only if not already extracted from upload)
             let baseDna = dna;
-            if (!baseDna) {
-                const result = await analyzeCharacter(uploadedImages);
-                baseDna = result.dna;
-                setDna(baseDna);
-                setCharacterName(baseDna.character_name);
+            if (!baseDna || !selectedCharacterId) {
+                if (uploadedImages.length > 0) {
+                    const result = await analyzeCharacter(uploadedImages);
+                    baseDna = result.dna;
+                    setDna(baseDna);
+                    setCharacterName(baseDna.character_name);
+                } else {
+                    throw new Error("No data available to process.");
+                }
             }
 
             // Step 2: Generate turnaround sheet with selected style
@@ -69,7 +98,7 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
             const dnaWithStyle = {
                 ...baseDna,
                 assigned_art_style: targetStyle,
-                identity_lock: true // Always true for creation per user preference
+                identity_lock: true
             };
 
             const turnaround = await generateCharacterTurnaround(dnaWithStyle, '16:9');
@@ -161,48 +190,83 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
                 {/* Style Selector & Upload Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                     <div className="lg:col-span-2 space-y-6">
-                        {/* Upload */}
+                        {/* 1. Base Selection */}
                         <div className="p-6 rounded-2xl border border-slate-800 bg-slate-900/50">
                             <h2 className="text-xl font-bold mb-4 flex items-center space-x-2">
-                                <Upload size={20} className="text-green-400" />
-                                <span>1. Upload Reference</span>
+                                <History size={20} className="text-green-400" />
+                                <span>1. Select Base Character</span>
                             </h2>
-                            <p className="text-slate-400 text-xs mb-4 uppercase tracking-wider font-bold">Recommended: Multiple angles for better DNA extraction</p>
+                            <p className="text-slate-400 text-xs mb-4 uppercase tracking-wider font-bold">Choose an existing DNA or upload new references</p>
 
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                multiple
-                                onChange={handleFileChange}
-                                className="hidden"
-                            />
-
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={uploadedImages.length >= 10}
-                                className="w-full py-4 border-2 border-dashed border-slate-700 hover:border-green-500/50 hover:bg-green-500/5 text-slate-400 hover:text-green-400 rounded-xl font-bold transition-all flex flex-col items-center justify-center space-y-2"
-                            >
-                                <Upload size={24} />
-                                <span>{uploadedImages.length >= 10 ? 'Maximum 10 images' : `Select Images (${uploadedImages.length}/10)`}</span>
-                            </button>
-
-                            {/* Image Grid */}
-                            {uploadedImages.length > 0 && (
-                                <div className="mt-6 grid grid-cols-3 md:grid-cols-5 gap-3">
-                                    {uploadedImages.map((img, idx) => (
-                                        <div key={idx} className="relative group aspect-square">
-                                            <img src={img} alt={`Upload ${idx + 1}`} className="w-full h-full object-cover rounded-lg border border-slate-700" />
-                                            <button
-                                                onClick={() => removeImage(idx)}
-                                                className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full shadow-lg"
-                                            >
-                                                <XCircle size={14} />
-                                            </button>
-                                        </div>
+                            <div className="space-y-4">
+                                <select
+                                    value={selectedCharacterId}
+                                    onChange={(e) => setSelectedCharacterId(e.target.value)}
+                                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500/50 text-sm font-semibold mb-4"
+                                >
+                                    <option value="">-- Start New Extraction --</option>
+                                    {characters.map(char => (
+                                        <option key={char.id} value={char.id}>{char.name}</option>
                                     ))}
-                                </div>
-                            )}
+                                </select>
+
+                                {!selectedCharacterId && (
+                                    <>
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            onChange={handleFileChange}
+                                            className="hidden"
+                                        />
+
+                                        <button
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={uploadedImages.length >= 10}
+                                            className="w-full py-4 border-2 border-dashed border-slate-700 hover:border-green-500/50 hover:bg-green-500/5 text-slate-400 hover:text-green-400 rounded-xl font-bold transition-all flex flex-col items-center justify-center space-y-2"
+                                        >
+                                            <Upload size={24} />
+                                            <span>{uploadedImages.length >= 10 ? 'Maximum 10 images' : `Select Images (${uploadedImages.length}/10)`}</span>
+                                        </button>
+
+                                        {/* Image Grid */}
+                                        {uploadedImages.length > 0 && (
+                                            <div className="mt-6 grid grid-cols-3 md:grid-cols-5 gap-3">
+                                                {uploadedImages.map((img, idx) => (
+                                                    <div key={idx} className="relative group aspect-square">
+                                                        <img src={img} alt={`Upload ${idx + 1}`} className="w-full h-full object-cover rounded-lg border border-slate-700" />
+                                                        <button
+                                                            onClick={() => removeImage(idx)}
+                                                            className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full shadow-lg"
+                                                        >
+                                                            <XCircle size={14} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+
+                                {selectedCharacterId && (
+                                    <div className="p-4 rounded-xl bg-green-500/5 border border-green-500/20 flex items-center space-x-4">
+                                        <div className="w-16 h-16 rounded-lg bg-slate-800 overflow-hidden shrink-0 border border-slate-700">
+                                            <img src={uploadedImages[0]} alt="Base" className="w-full h-full object-cover" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-green-400">DNA Loaded</h3>
+                                            <p className="text-xs text-slate-400">{uploadedImages.length} references connected</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setSelectedCharacterId('')}
+                                            className="ml-auto text-slate-500 hover:text-white"
+                                        >
+                                            <XCircle size={18} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -221,8 +285,8 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
                                         key={style.id}
                                         onClick={() => {
                                             setSelectedStyle(style.id);
-                                            // If already has DNA, we can trigger a re-generation of turnaround
-                                            if (dna) handleAnalyze(style.id);
+                                            // If already has DNA and we are in remix mode, maybe we don't auto-analyze unless requested
+                                            // To keep UI responsive
                                         }}
                                         className={`flex items-center space-x-3 p-3 rounded-xl border transition-all text-left ${selectedStyle === style.id
                                             ? 'bg-green-500/20 border-green-500 text-white'
@@ -245,7 +309,7 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
                 </div>
 
                 {/* Analyze Button */}
-                {uploadedImages.length >= 1 && !dna && (
+                {(uploadedImages.length >= 1 || selectedCharacterId) && status !== 'success' && (
                     <button
                         onClick={() => handleAnalyze()}
                         disabled={isAnalyzing}
@@ -263,14 +327,14 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
                         ) : (
                             <>
                                 <Sparkles size={24} />
-                                <span>EXTRACT DNA & GENERATE TURNAROUND</span>
+                                <span>{selectedCharacterId ? 'EVOLVE DNA & APPLY NEW STYLE' : 'EXTRACT DNA & GENERATE TURNAROUND'}</span>
                             </>
                         )}
                     </button>
                 )}
 
                 {/* DNA Results */}
-                {dna && (
+                {dna && status === 'success' && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         <div className="p-8 rounded-3xl border border-green-500/20 bg-green-500/5 backdrop-blur-sm">
                             <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">

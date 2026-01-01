@@ -1,8 +1,8 @@
 
 import React, { useState, useRef } from 'react';
 /* Added missing XCircle to the import list from lucide-react */
-import { Search, Tag, Trash2, ExternalLink, Download, ArrowLeft, Filter, Grid, List as ListIcon, ImageIcon, LayoutTemplate, Copy, Check, Palette, ShieldAlert, Zap, History, FileCode, Terminal, Rocket, Clock, MessageSquare, Send, Loader2, Upload, AlertCircle, Eye, XCircle, Type as TypeIcon, Target, Users, Wand2 } from 'lucide-react';
-import { DesignReference, BrandReference, GeneratedPost, RetouchHistory, UsageLog, CharacterReference, GeneratedCharacterPose } from '../types';
+import { Search, Tag, Trash2, ExternalLink, Download, ArrowLeft, Filter, Grid, List as ListIcon, ImageIcon, LayoutTemplate, Copy, Check, Palette, ShieldAlert, Zap, History, FileCode, Terminal, Rocket, Clock, MessageSquare, Send, Loader2, Upload, AlertCircle, Eye, XCircle, Type as TypeIcon, Target, Users, Wand2, Layers } from 'lucide-react';
+import { DesignReference, BrandReference, GeneratedPost, RetouchHistory, UsageLog, CharacterReference, GeneratedCharacterPose, GeneratedCarousel } from '../types';
 import { refinePostImage } from '../services/geminiService';
 import AnnotationCanvas from './AnnotationCanvas';
 
@@ -10,11 +10,13 @@ interface LibraryProps {
   references: DesignReference[];
   brands: BrandReference[];
   generatedPosts: GeneratedPost[];
+  generatedCarousels: GeneratedCarousel[];
   characters: CharacterReference[];
   characterPoses: GeneratedCharacterPose[];
   onDelete: (id: string) => void;
   onDeleteBrand: (id: string) => void;
   onDeletePost: (id: string) => void;
+  onDeleteCarousel: (id: string) => void;
   onDeleteCharacter: (id: string) => void;
   onDeleteCharacterPose: (id: string) => void;
   onUpdateReference: (ref: DesignReference) => void;
@@ -24,14 +26,15 @@ interface LibraryProps {
   onBack: () => void;
 }
 
-const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, characters, characterPoses, onDelete, onDeleteBrand, onDeletePost, onDeleteCharacter, onDeleteCharacterPose, onUpdateReference, onUpdateBrand, onUpdatePost, onUpdateCharacter, onBack }) => {
+const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, generatedCarousels, characters, characterPoses, onDelete, onDeleteBrand, onDeletePost, onDeleteCarousel, onDeleteCharacter, onDeleteCharacterPose, onUpdateReference, onUpdateBrand, onUpdatePost, onUpdateCharacter, onBack }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRef, setSelectedRef] = useState<DesignReference | null>(null);
   const [selectedBrand, setSelectedBrand] = useState<BrandReference | null>(null);
   const [selectedPost, setSelectedPost] = useState<GeneratedPost | null>(null);
+  const [selectedCarousel, setSelectedCarousel] = useState<GeneratedCarousel | null>(null);
   const [selectedCharacter, setSelectedCharacter] = useState<CharacterReference | null>(null);
   const [selectedCharacterPose, setSelectedCharacterPose] = useState<GeneratedCharacterPose | null>(null);
-  const [viewMode, setViewMode] = useState<'original' | 'template' | 'brands' | 'generated' | 'characters' | 'character_poses'>('generated');
+  const [viewMode, setViewMode] = useState<'original' | 'template' | 'brands' | 'generated' | 'carousels' | 'characters' | 'character_poses'>('template');
   const [copied, setCopied] = useState(false);
 
   // Retouch Studio State
@@ -80,6 +83,10 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, c
 
   const filteredPosts = generatedPosts.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredCarousels = (generatedCarousels || []).filter(c =>
+    c.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredBrands = brands.filter(b =>
@@ -158,7 +165,10 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, c
             <ArrowLeft size={22} />
           </button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-white">The Vault</h2>
+            <div className="flex items-center space-x-3 mb-1">
+              <img src="./logo.png" className="w-6 h-6 object-contain" />
+              <h2 className="text-3xl font-black tracking-tighter italic uppercase">MY <span className="text-green-500">FILES</span></h2>
+            </div>
             <p className="text-slate-400 text-sm">Centralized structural and brand DNA registry.</p>
           </div>
         </div>
@@ -169,6 +179,9 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, c
           </button>
           <button onClick={() => setViewMode('template')} className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${viewMode === 'template' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
             <LayoutTemplate size={14} /><span>Blueprints</span>
+          </button>
+          <button onClick={() => setViewMode('carousels')} className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${viewMode === 'carousels' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+            <Layers size={14} /><span>Carousels</span>
           </button>
           <button onClick={() => setViewMode('original')} className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${viewMode === 'original' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
             <History size={14} /><span>Originals</span>
@@ -208,6 +221,58 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, c
                 <div className="p-4 flex items-center justify-between border-t border-slate-800/50">
                   <span className="text-[10px] text-slate-600 font-mono uppercase">{new Date(post.createdAt).toLocaleDateString()}</span>
                   <button onClick={(e) => { e.stopPropagation(); onDeletePost(post.id); }} className="p-2 rounded-xl text-slate-600 hover:text-red-400 transition-all"><Trash2 size={16} /></button>
+                </div>
+              </div>
+            ))
+        )}
+
+        {viewMode === 'carousels' && (
+          filteredCarousels.length === 0 ? <EmptyState icon={<Layers size={64} />} label="No generated carousels yet." /> :
+            filteredCarousels.map(carousel => (
+              <div key={carousel.id} onClick={() => setSelectedCarousel(carousel)} className="group rounded-[2.5rem] border border-slate-800 bg-slate-900/40 overflow-hidden hover:border-indigo-500/40 transition-all cursor-pointer relative flex flex-col">
+                <div className="aspect-[4/5] relative bg-black">
+                  {carousel.slides[0]?.generatedImage ? (
+                    <img src={carousel.slides[0].generatedImage} className="w-full h-full object-cover opacity-80 group-hover:opacity-100" alt={carousel.name} />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-950 text-slate-700">
+                      <Layers size={48} className="opacity-20" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                  <div className="absolute top-4 right-4"><span className="px-2 py-1 rounded-md bg-indigo-500/20 text-indigo-400 text-[8px] font-bold border border-indigo-500/30 uppercase">{carousel.slides.length} Slides</span></div>
+                  <div className="absolute bottom-6 left-6 right-6">
+                    <h4 className="font-bold text-lg text-white truncate">{carousel.name}</h4>
+                  </div>
+                </div>
+                <div className="p-4 flex items-center justify-between border-t border-slate-800/50">
+                  <span className="text-[10px] text-slate-600 font-mono uppercase">{new Date(carousel.createdAt).toLocaleDateString()}</span>
+                  <button onClick={(e) => { e.stopPropagation(); onDeleteCarousel(carousel.id); }} className="p-2 rounded-xl text-slate-600 hover:text-red-400 transition-all"><Trash2 size={16} /></button>
+                </div>
+              </div>
+            ))
+        )}
+
+        {viewMode === 'carousels' && (
+          filteredCarousels.length === 0 ? <EmptyState icon={<Layers size={64} />} label="No generated carousels yet." /> :
+            filteredCarousels.map(carousel => (
+              <div key={carousel.id} onClick={() => setSelectedCarousel(carousel)} className="group rounded-[2.5rem] border border-slate-800 bg-slate-900/40 overflow-hidden hover:border-indigo-500/40 transition-all cursor-pointer relative flex flex-col">
+                <div className="aspect-[4/5] relative bg-black">
+                  {carousel.slides[0]?.generatedImage ? (
+                    <img src={carousel.slides[0].generatedImage} className="w-full h-full object-cover opacity-80 group-hover:opacity-100" alt={carousel.name} />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-950 text-slate-700">
+                      <Layers size={48} className="opacity-20" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                  <div className="absolute top-4 right-4"><span className="px-2 py-1 rounded-md bg-indigo-500/20 text-indigo-400 text-[8px] font-bold border border-indigo-500/30 uppercase">{carousel.slides.length} Slides</span></div>
+                  <div className="absolute bottom-6 left-6 right-6">
+                    <h4 className="font-bold text-lg text-white truncate">{carousel.name}</h4>
+                  </div>
+                </div>
+                <div className="p-4 flex items-center justify-between border-t border-slate-800/50">
+                  <span className="text-[10px] text-slate-600 font-mono uppercase">{new Date(carousel.createdAt).toLocaleDateString()}</span>
+                  <button onClick={(e) => { e.stopPropagation(); onDeleteCarousel(carousel.id); }} className="p-2 rounded-xl text-slate-600 hover:text-red-400 transition-all"><Trash2 size={16} /></button>
                 </div>
               </div>
             ))
@@ -423,6 +488,76 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, c
                       </div>
                     ))
                   )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CAROUSEL PREVIEW MODAL */}
+      {selectedCarousel && (
+        <div className="fixed inset-0 z-[100] bg-[#020617] backdrop-blur-3xl overflow-y-auto animate-in fade-in duration-300">
+          <div className="max-w-7xl mx-auto px-6 py-12">
+            <div className="flex items-center justify-between mb-12 border-b border-slate-800 pb-8">
+              <div className="flex items-center space-x-6">
+                <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 shadow-2xl"><Layers size={32} className="text-indigo-400" /></div>
+                <div>
+                  <h2 className="text-4xl font-bold text-white">{selectedCarousel.name}</h2>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.4em] mt-2">Carousel Deck v1.0</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedCarousel(null)} className="px-8 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 transition-all font-bold text-slate-300">Exit Deck</button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {selectedCarousel.slides.map((slide) => (
+                <div key={slide.id} className="group rounded-[2.5rem] border border-slate-800 bg-slate-900/40 overflow-hidden hover:border-indigo-500/40 transition-all relative flex flex-col">
+                  <div className="aspect-[4/5] relative bg-black">
+                    {slide.generatedImage ? (
+                      <img src={slide.generatedImage} className="w-full h-full object-cover" alt={`Slide ${slide.slideNumber}`} />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-slate-950 text-slate-700">
+                        <Zap size={48} className="opacity-20 animate-pulse" />
+                      </div>
+                    )}
+                    <div className="absolute top-4 right-4"><span className="px-2 py-1 rounded-md bg-white/10 text-white/50 text-[10px] font-bold border border-white/10 uppercase">Slide {slide.slideNumber}</span></div>
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-6 text-center">
+                      <p className="text-xs text-slate-300 italic">"{slide.copyBrief}"</p>
+                    </div>
+                  </div>
+                  <div className="p-5 border-t border-slate-800/50">
+                    <button
+                      onClick={() => slide.generatedImage && setFullPreview(slide.generatedImage)}
+                      className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold uppercase tracking-widest transition-all flex items-center justify-center space-x-2"
+                    >
+                      <Eye size={12} />
+                      <span>Expand View</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-12 p-10 rounded-[3rem] bg-slate-900/50 border border-slate-800 shadow-2xl">
+              <div className="flex items-center space-x-3 mb-8">
+                <Terminal size={18} className="text-indigo-400" />
+                <h3 className="text-lg font-bold">Carousel Metadata</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Linked Blueprint</span>
+                  <p className="text-sm text-slate-300">{references.find(r => r.id === selectedCarousel.blueprintId)?.name || 'Generic Blueprint'}</p>
+                </div>
+                {selectedCarousel.brandId && (
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Active Brand DNA</span>
+                    <p className="text-sm text-slate-300">{brands.find(b => b.id === selectedCarousel.brandId)?.name || 'Custom Brand'}</p>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Deployment Date</span>
+                  <p className="text-sm text-slate-300">{new Date(selectedCarousel.createdAt).toLocaleString()}</p>
                 </div>
               </div>
             </div>
