@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
-import { DesignPromptJson, ContentBrief, BrandDNA, AspectRatio, UsageLog, CharacterDNA, CharacterArtStyle, PromptData } from "../types";
+import { DesignPromptJson, ContentBrief, BrandDNA, AspectRatio, UsageLog, CharacterDNA, CharacterArtStyle, PromptData, GeminiModel, ModelPreference } from "../types";
 
 
 const PRICING = {
@@ -211,6 +211,17 @@ export const generateTemplateImage = async (jsonSpec: DesignPromptJson, ratio: A
   throw new Error("Validation render failed.");
 };
 
+const MODEL_MAP = {
+  flash: {
+    text: 'gemini-3-flash-preview',
+    image: 'gemini-3-pro-image-preview' // Assuming pro is available for image
+  },
+  pro: {
+    text: 'gemini-3-pro-preview', // Assuming pro text exists
+    image: 'gemini-3-pro-image-preview'
+  }
+};
+
 export const getPostPromptData = (
   reference: DesignPromptJson,
   brief: ContentBrief,
@@ -225,7 +236,7 @@ export const getPostPromptData = (
   const carouselCtx = brief.slide_number ? `This is slide ${brief.slide_number} of a ${brief.total_slides} slide carousel. Adapt layout accordingly.` : "";
 
   const characterCtx = characterDNA
-    ? `CHARACTER DNA: ${JSON.stringify(characterDNA)}. You MUST include this character in the design. Use its physical description and color palette. This is an IDENTITY LOCKED generation for the character.`
+    ? `CHARACTER DNA: ${JSON.stringify(characterDNA)}. You MUST include this character in the design. Use its physical description and color palette. This is an IDENTITY LOCKED generation for the character. Reference its features from the provided visual DNA.`
     : "";
 
   const text = `Create a new post remix. 
@@ -249,18 +260,21 @@ export const generatePostFromReference = async (
   brief: ContentBrief,
   intensity: string,
   brandOverride?: BrandDNA,
-  characterDNA?: CharacterDNA
+  characterDNA?: CharacterDNA,
+  modelType: GeminiModel = 'flash'
 ): Promise<{ report: string, finalVisualPrompt: string, usage: UsageLog }> => {
   const ai = getAI();
   const promptData = getPostPromptData(reference, brief, intensity, brandOverride, characterDNA);
+  const modelName = MODEL_MAP[modelType].text;
 
+  // Use parts structure for stability
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: promptData.text
+    model: modelName,
+    contents: { parts: [{ text: promptData.text }] }
   });
 
   const raw = response.text || '';
-  const usageLog = await recordUsage('Post Generator', 'gemini-3-flash-preview', response);
+  const usageLog = await recordUsage('Post Generator', modelName, response);
   const [report, finalPrompt] = raw.split('---PROMPT_START---');
   return { report: report.trim(), finalVisualPrompt: finalPrompt?.trim() || '', usage: usageLog };
 };
@@ -272,20 +286,43 @@ export const getRemixPromptData = (visualPrompt: string, ratio: AspectRatio): Pr
   };
 };
 
-export const generateRemixImage = async (visualPrompt: string, ratio: AspectRatio): Promise<{ image: string, usage: UsageLog }> => {
+export const generateRemixImage = async (
+  visualPrompt: string,
+  ratio: AspectRatio,
+  characterDNA?: CharacterDNA,
+  modelType: GeminiModel = 'pro'
+): Promise<{ image: string, usage: UsageLog }> => {
   const ai = getAI();
   const promptData = getRemixPromptData(visualPrompt, ratio);
+  const modelName = MODEL_MAP[modelType].image;
+
+  const parts: any[] = [];
+
+  // CHARACTER IDENTITY LOCK: Inject reference images if mascot is selected
+  if (characterDNA?.reference_images && characterDNA.reference_images.length > 0) {
+    const primaryRef = characterDNA.reference_images[0];
+    parts.push({
+      inlineData: {
+        mimeType: 'image/jpeg',
+        data: primaryRef.split(',')[1] || primaryRef
+      }
+    });
+    promptData.text = `DEPLOY CHARACTER: Use the provided reference image (Image 1) as the SOURCE OF TRUTH for the character appearance. \n\n${promptData.text}`;
+  }
+
+  parts.push({ text: promptData.text });
+
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-image-preview',
-    contents: { parts: [{ text: promptData.text }] },
+    model: modelName,
+    contents: { parts },
     config: { imageConfig: { aspectRatio: ratio } },
   });
 
-  const parts = response.candidates?.[0]?.content?.parts;
-  if (!parts) throw new Error("Remix generation failed.");
+  const resParts = response.candidates?.[0]?.content?.parts;
+  if (!resParts) throw new Error("Remix generation failed.");
 
-  const usageLog = await recordUsage('Post Generator', 'gemini-3-pro-image-preview', response);
-  for (const part of parts) {
+  const usageLog = await recordUsage('Post Generator', modelName, response);
+  for (const part of resParts) {
     if (part.inlineData) return { image: `data:image/png;base64,${part.inlineData.data}`, usage: usageLog };
   }
   throw new Error("Remix failed to render.");

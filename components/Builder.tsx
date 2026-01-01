@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 // Added missing Rocket import
-import { Upload, Sparkles, Save, ArrowLeft, Loader2, Terminal, Zap, AlertCircle, CheckCircle2, ChevronRight, XCircle, Code, Layers, Palette, Type as TypeIcon, Rocket } from 'lucide-react';
+import { Upload, Sparkles, Save, ArrowLeft, Loader2, Terminal, Zap, AlertCircle, CheckCircle2, ChevronRight, XCircle, Code, Layers, Palette, Type as TypeIcon, Rocket, Target } from 'lucide-react';
 import { analyzeDesign, generateTemplateImage } from '../services/geminiService';
 import { DesignReference, DesignPromptJson, AspectRatio, UsageLog } from '../types';
 
@@ -316,6 +316,11 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
                 icon={<Rocket size={14} className="text-green-400" />}
                 label="Aspect Ratio"
                 value={ratio}
+              />
+              <VariableBox
+                icon={<Target size={14} className={result.json.structural_rules.has_character_slot ? "text-green-400" : "text-slate-600"} />}
+                label="Character Slot"
+                value={result.json.structural_rules.has_character_slot ? "Detected" : "None"}
               />
             </div>
 

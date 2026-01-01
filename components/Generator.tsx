@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Rocket, Sparkles, ArrowLeft, ChevronDown, ImageIcon, Loader2, Copy, Check, Zap, AlertCircle, RefreshCw, Send, Palette, XCircle, Layers, Save, Target, LayoutTemplate, FileCode, Eye } from 'lucide-react';
-import { DesignReference, BrandReference, RemixIntensity, ContentBrief, AspectRatio, GeneratedPost, CharacterReference } from '../types';
+import { DesignReference, BrandReference, RemixIntensity, ContentBrief, AspectRatio, GeneratedPost, CharacterReference, GeminiModel } from '../types';
 import { generatePostFromReference, generateRemixImage, refinePostImage, getPostPromptData } from '../services/geminiService';
 import AnnotationCanvas from './AnnotationCanvas';
 import PromptPreviewModal from './PromptPreviewModal';
@@ -46,6 +46,7 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
   const [fullPreview, setFullPreview] = useState<string | null>(null);
   const [promptPreview, setPromptPreview] = useState<PromptData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [modelType, setModelType] = useState<GeminiModel>('flash');
 
   const selectedRef = references.find(r => r.id === selectedId);
   const selectedBrand = brands.find(b => b.id === selectedBrandId);
@@ -72,13 +73,19 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
         finalBrief,
         intensity,
         selectedBrand?.dna,
-        selectedCharacter?.dna
+        selectedCharacter?.dna,
+        modelType
       );
       setResultText(report);
 
       if (finalVisualPrompt) {
         setImageLoading(true);
-        const { image: img } = await generateRemixImage(finalVisualPrompt, brief.aspectRatio);
+        const { image: img } = await generateRemixImage(
+          finalVisualPrompt,
+          brief.aspectRatio,
+          selectedCharacter?.dna,
+          'pro' // Always use pro for image generation for highest quality
+        );
         setRemixImage(img);
         setImageLoading(false);
       }
@@ -176,67 +183,79 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">1. Select Components</label>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
+              {/* BLUEPRINTS PICKER */}
               <div className="space-y-3">
-                <div className="flex flex-col space-y-2">
-                  <select className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/50" value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
-                    <option value="" className="bg-slate-900">Choose Structural Blueprint...</option>
-                    {references.map(r => <option key={r.id} value={r.id} className="bg-slate-900">{r.name}</option>)}
-                  </select>
-                  {selectedRef && (
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Blueprints</p>
+                <div className="flex space-x-3 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
+                  {references.map(r => (
                     <div
-                      className="h-32 w-full rounded-2xl border border-blue-500/20 overflow-hidden bg-black/40 animate-in slide-in-from-top-2 duration-300 cursor-pointer group/preview relative"
-                      onClick={() => setFullPreview(selectedRef.templateImage || selectedRef.imageSource)}
+                      key={r.id}
+                      onClick={() => setSelectedId(r.id)}
+                      className={`shrink-0 w-24 h-24 rounded-2xl border-2 transition-all cursor-pointer overflow-hidden group relative ${selectedId === r.id ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'border-slate-800 hover:border-slate-700'}`}
                     >
-                      <img src={selectedRef.templateImage || selectedRef.imageSource} className="w-full h-full object-contain opacity-70 group-hover/preview:opacity-100 transition-opacity" alt="Preview" />
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/preview:opacity-100 transition-opacity bg-black/40">
-                        <Eye size={20} className="text-white" />
+                      <img src={r.templateImage || r.imageSource} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                      <div className={`absolute inset-0 bg-blue-500/10 ${selectedId === r.id ? 'opacity-100' : 'opacity-0'} group-hover:opacity-100 transition-opacity`} />
+                      <div className="absolute bottom-0 inset-x-0 p-1 bg-black/60 backdrop-blur-sm">
+                        <p className="text-[8px] font-bold text-white truncate text-center uppercase tracking-tighter">{r.name}</p>
                       </div>
                     </div>
-                  )}
+                  ))}
                 </div>
-
-                <div className="flex flex-col space-y-2">
-                  <select className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/50" value={selectedBrandId} onChange={(e) => setSelectedBrandId(e.target.value)}>
-                    <option value="" className="bg-slate-900">Choose Brand Identity (Optional)...</option>
-                    {brands.map(b => <option key={b.id} value={b.id} className="bg-slate-900">{b.name}</option>)}
-                  </select>
-                  {selectedBrand && (
-                    <div
-                      className="h-24 w-full rounded-2xl border border-pink-500/20 overflow-hidden bg-slate-950 animate-in slide-in-from-top-2 duration-300 flex items-center justify-center p-4 cursor-pointer group/brand relative"
-                      onClick={() => setFullPreview(selectedBrand.imageSource)}
-                    >
-                      <img src={selectedBrand.imageSource} className="max-w-full max-h-full object-contain opacity-60 group-hover/brand:opacity-100 transition-opacity" alt="Preview" />
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/brand:opacity-100 transition-opacity bg-black/40">
-                        <Eye size={18} className="text-white" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {selectedRef?.jsonSpec.structural_rules.has_character_slot && (
-                  <div className="flex flex-col space-y-2 animate-in slide-in-from-top-2 duration-500">
-                    <select className="w-full px-4 py-3 bg-slate-800 border border-green-500/30 rounded-xl text-sm outline-none focus:ring-2 focus:ring-green-500/50" value={selectedCharacterId} onChange={(e) => setSelectedCharacterId(e.target.value)}>
-                      <option value="" className="bg-slate-900">Deploy Character DNA...</option>
-                      {characters.map(c => <option key={c.id} value={c.id} className="bg-slate-900">{c.name}</option>)}
-                    </select>
-                    {selectedCharacter && (
-                      <div
-                        className="h-24 w-full rounded-2xl border border-green-500/20 overflow-hidden bg-black animate-in slide-in-from-top-2 duration-300 flex items-center justify-center cursor-pointer group/char relative"
-                        onClick={() => setFullPreview(selectedCharacter.dna.reference_images[0])}
-                      >
-                        <img src={selectedCharacter.dna.reference_images[0]} className="w-full h-full object-cover opacity-60 group-hover/char:opacity-100 transition-opacity" alt="Preview" />
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/char:opacity-100 transition-opacity bg-black/40">
-                          <Eye size={18} className="text-white" />
-                        </div>
-                        <div className="absolute top-2 right-2 flex space-x-1">
-                          <span className="bg-green-500/20 text-green-400 text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-widest border border-green-500/30">Identity Locked</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
+
+              {/* BRANDS PICKER */}
+              <div className="space-y-3">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Brand Identity (Optional)</p>
+                <div className="flex space-x-3 overflow-x-auto pb-2 no-scrollbar">
+                  <div
+                    onClick={() => setSelectedBrandId('')}
+                    className={`shrink-0 w-16 h-16 rounded-full border-2 transition-all cursor-pointer flex items-center justify-center bg-slate-800/30 ${selectedBrandId === '' ? 'border-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.3)]' : 'border-slate-800'}`}
+                  >
+                    <XCircle size={14} className="text-slate-500" />
+                  </div>
+                  {brands.map(b => (
+                    <div
+                      key={b.id}
+                      onClick={() => setSelectedBrandId(b.id)}
+                      className={`shrink-0 w-16 h-16 rounded-full border-2 transition-all cursor-pointer overflow-hidden bg-slate-950 p-2 ${selectedBrandId === b.id ? 'border-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.3)]' : 'border-slate-800 hover:border-slate-700'}`}
+                    >
+                      <img src={b.imageSource} className="w-full h-full object-contain" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* CHARACTER PICKER */}
+              {selectedRef?.jsonSpec.structural_rules.has_character_slot && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                  <p className="text-[10px] font-bold text-green-500/70 uppercase tracking-widest ml-1 flex items-center">
+                    <Rocket size={10} className="mr-1.5" /> Character Slot Detected
+                  </p>
+                  <div className="flex space-x-3 overflow-x-auto pb-2 no-scrollbar">
+                    <div
+                      onClick={() => setSelectedCharacterId('')}
+                      className={`shrink-0 w-16 h-16 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-center bg-slate-800/30 ${selectedCharacterId === '' ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)]' : 'border-slate-800'}`}
+                    >
+                      <Sparkles size={14} className="text-slate-500" />
+                    </div>
+                    {characters.map(c => (
+                      <div
+                        key={c.id}
+                        onClick={() => setSelectedCharacterId(c.id)}
+                        className={`shrink-0 w-16 h-16 rounded-2xl border-2 transition-all cursor-pointer overflow-hidden bg-black ${selectedCharacterId === c.id ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)]' : 'border-slate-800 hover:border-slate-700'}`}
+                      >
+                        <img src={c.dna.reference_images[0]} className="w-full h-full object-cover" />
+                        {selectedCharacterId === c.id && (
+                          <div className="absolute top-1 right-1">
+                            <Check size={8} className="text-green-400 bg-green-950 rounded-full" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -320,20 +339,37 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
               {/* ACTION BAR RELOCATED HERE */}
               <div className="pt-6 mt-auto border-t border-slate-800/50 space-y-4">
                 <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center space-x-2 bg-slate-800/40 p-1 rounded-xl border border-slate-700/30">
-                    <select value={brief.aspectRatio} onChange={(e) => setBrief({ ...brief, aspectRatio: e.target.value as AspectRatio })} className="bg-transparent border-none text-[10px] font-bold uppercase tracking-widest text-slate-500 outline-none cursor-pointer px-2">
-                      <option value="1:1" className="bg-slate-900">1:1 Square</option>
-                      <option value="4:3" className="bg-slate-900">4:3 Slide</option>
-                      <option value="3:4" className="bg-slate-900">3:4 Portrait</option>
-                      <option value="9:16" className="bg-slate-900">9:16 Story</option>
-                      <option value="16:9" className="bg-slate-900">16:9 Landscape</option>
-                    </select>
-                    <div className="w-px h-3 bg-slate-700/50" />
-                    <select value={intensity} onChange={(e) => setIntensity(e.target.value as RemixIntensity)} className="bg-transparent border-none text-[10px] font-bold uppercase tracking-widest text-slate-500 outline-none cursor-pointer px-2">
-                      <option value="strict" className="bg-slate-900">Strict DNA</option>
-                      <option value="light" className="bg-slate-900">Light Touch</option>
-                      <option value="heavy" className="bg-slate-900">Creative Heavy</option>
-                    </select>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2 bg-slate-800/40 p-1 rounded-xl border border-slate-700/30">
+                      <select value={brief.aspectRatio} onChange={(e) => setBrief({ ...brief, aspectRatio: e.target.value as AspectRatio })} className="bg-transparent border-none text-[10px] font-bold uppercase tracking-widest text-slate-500 outline-none cursor-pointer px-2">
+                        <option value="1:1" className="bg-slate-900">1:1 Square</option>
+                        <option value="4:3" className="bg-slate-900">4:3 Slide</option>
+                        <option value="3:4" className="bg-slate-900">3:4 Portrait</option>
+                        <option value="9:16" className="bg-slate-900">9:16 Story</option>
+                        <option value="16:9" className="bg-slate-900">16:9 Landscape</option>
+                      </select>
+                      <div className="w-px h-3 bg-slate-700/50" />
+                      <select value={intensity} onChange={(e) => setIntensity(e.target.value as RemixIntensity)} className="bg-transparent border-none text-[10px] font-bold uppercase tracking-widest text-slate-500 outline-none cursor-pointer px-2">
+                        <option value="strict" className="bg-slate-900">Strict DNA</option>
+                        <option value="light" className="bg-slate-900">Light Touch</option>
+                        <option value="heavy" className="bg-slate-900">Creative Heavy</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center bg-slate-800/60 p-1 rounded-xl border border-slate-700/30">
+                      <button
+                        onClick={() => setModelType('flash')}
+                        className={`px-3 py-1 rounded-lg text-[9px] font-bold transition-all ${modelType === 'flash' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+                      >
+                        FLASH
+                      </button>
+                      <button
+                        onClick={() => setModelType('pro')}
+                        className={`px-3 py-1 rounded-lg text-[9px] font-bold transition-all ${modelType === 'pro' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+                      >
+                        PRO
+                      </button>
+                    </div>
                   </div>
                 </div>
 

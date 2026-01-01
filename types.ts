@@ -172,6 +172,13 @@ export enum AppTool {
 
 export type RemixIntensity = 'strict' | 'light' | 'heavy';
 
+export type GeminiModel = 'flash' | 'pro';
+
+export interface ModelPreference {
+  textModel: GeminiModel;
+  imageModel: GeminiModel;
+}
+
 export interface UsageLog {
   id: string;
   timestamp: number;
