@@ -98,7 +98,9 @@ export const analyzeDesign = async (imageB64: string, userNotes?: string): Promi
       "color_grammar": "Palette description with hex codes if visible",
       "composition_map": "Map of element positioning (e.g., Top-Left Text, Bottom-Right Graphic)",
       "aesthetic_motifs": "Visual details like 'Grainy texture, 3D elements, paper tear effect'",
-      "has_character_slot": true
+      "has_character_slot": true,
+      "dark_theme_adaptation": "Specific rules for adapting this to dark mode (e.g. 'Use #1a1a1a bg, white text')",
+      "light_theme_adaptation": "Specific rules for adapting this to light mode (e.g. 'Use #f0f0f0 bg, charcoal text')"
     },
     "layout_constraints": {
       "forbidden_elements": ["List of things that would break this style"],
@@ -142,7 +144,9 @@ export const analyzeDesign = async (imageB64: string, userNotes?: string): Promi
         typography_system: "Bold Sans-Serif",
         color_grammar: "High-Contrast Vibrant",
         composition_map: "Centered Headline, Bottom Illustration",
-        aesthetic_motifs: "Clean edges, soft shadows"
+        aesthetic_motifs: "Clean edges, soft shadows",
+        dark_theme_adaptation: "Deep slate background, neon blue accents, white text",
+        light_theme_adaptation: "Pale grey background, royal blue accents, navy text"
       };
     }
 
@@ -166,7 +170,16 @@ export const analyzeDesign = async (imageB64: string, userNotes?: string): Promi
 export const analyzeBrand = async (imageB64: string): Promise<{ dna: BrandDNA, usage: UsageLog }> => {
   const ai = getAI();
   const prompt = `Analyze this brand asset. Extract Brand DNA. 
-  Return ONLY a JSON object: { "brand_name": "string", "primary_colors": ["hex codes"], "color_logic": "string", "brand_vibe": "string", "typography_notes": "string", "forbidden_styles": [] }`;
+  Return ONLY a JSON object: { 
+    "brand_name": "string", 
+    "primary_colors": ["hex codes"], 
+    "color_logic": "string", 
+    "brand_vibe": "string", 
+    "typography_notes": "string", 
+    "forbidden_styles": [],
+    "dark_mode_colors": ["hex codes for dark theme backgrounds/accents"],
+    "light_mode_colors": ["hex codes for light theme backgrounds/accents"]
+  }`;
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
@@ -214,7 +227,7 @@ export const generateTemplateImage = async (jsonSpec: DesignPromptJson, ratio: A
 const MODEL_MAP = {
   flash: {
     text: 'gemini-3-flash-preview',
-    image: 'gemini-3-pro-image-preview' // Assuming pro is available for image
+    image: 'gemini-3-flash-preview' // Use flash for image to save quota
   },
   pro: {
     text: 'gemini-3-pro-preview', // Assuming pro text exists
@@ -227,7 +240,8 @@ export const getPostPromptData = (
   brief: ContentBrief,
   intensity: string,
   brandOverride?: BrandDNA,
-  characterDNA?: CharacterDNA
+  characterDNA?: CharacterDNA,
+  theme: 'dark' | 'light' | 'auto' = 'auto'
 ): PromptData => {
   const brandContext = brandOverride
     ? `BRAND RULES: ${JSON.stringify(brandOverride)}`
@@ -235,9 +249,12 @@ export const getPostPromptData = (
 
   const carouselCtx = brief.slide_number ? `This is slide ${brief.slide_number} of a ${brief.total_slides} slide carousel. Adapt layout accordingly.` : "";
 
-  const characterCtx = characterDNA
-    ? `CHARACTER DNA: ${JSON.stringify(characterDNA)}. You MUST include this character in the design. Use its physical description and color palette. This is an IDENTITY LOCKED generation for the character. Reference its features from the provided visual DNA.`
-    : "";
+  // Optimize Character DNA for text prompt (remove heavy base64 images)
+  let characterCtx = "";
+  if (characterDNA) {
+    const { reference_images, ...dnaLite } = characterDNA;
+    characterCtx = `CHARACTER DNA: ${JSON.stringify(dnaLite)}. You MUST include this character in the design. Use its physical description and color palette. This is an IDENTITY LOCKED generation for the character. Reference its features from the provided visual DNA.`;
+  }
 
   const text = `Create a new post remix. 
   SOURCE DNA: ${JSON.stringify(reference)}
@@ -246,6 +263,16 @@ export const getPostPromptData = (
   ${brandContext}
   ${characterCtx}
   INTENSITY: ${intensity}
+  THEME MODE: ${theme}
+
+  THEME ADAPTATION RULES:
+  ${theme === 'dark' ? (reference.structural_rules.dark_theme_adaptation || "Use deep charcoal/black backgrounds with high contrast white/light text. Invert standard colors.") : ''}
+  ${theme === 'light' ? (reference.structural_rules.light_theme_adaptation || "Use smooth white/light gray backgrounds with dark text. Clean, airy look.") : ''}
+
+  COPY RULES:
+  - If the NEW BRIEF contains specific text/copy, you MUST include it in your visual prompt description.
+  - Explicitly state: "The image features text that says '[insert copy here]'."
+  - Do not summarize the text; use the exact words provided.
  
   Return a production report then ---PROMPT_START--- then a single-line visual prompt that includes the layout logic of the source DNA but with the new content from the brief.
   
@@ -261,10 +288,11 @@ export const generatePostFromReference = async (
   intensity: string,
   brandOverride?: BrandDNA,
   characterDNA?: CharacterDNA,
-  modelType: GeminiModel = 'flash'
+  modelType: GeminiModel = 'flash',
+  theme: 'dark' | 'light' | 'auto' = 'auto'
 ): Promise<{ report: string, finalVisualPrompt: string, usage: UsageLog }> => {
   const ai = getAI();
-  const promptData = getPostPromptData(reference, brief, intensity, brandOverride, characterDNA);
+  const promptData = getPostPromptData(reference, brief, intensity, brandOverride, characterDNA, theme);
   const modelName = MODEL_MAP[modelType].text;
 
   // Use parts structure for stability

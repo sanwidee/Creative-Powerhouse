@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 // Added missing Rocket import
-import { Upload, Sparkles, Save, ArrowLeft, Loader2, Terminal, Zap, AlertCircle, CheckCircle2, ChevronRight, XCircle, Code, Layers, Palette, Type as TypeIcon, Rocket, Target } from 'lucide-react';
+import { Upload, Sparkles, Save, ArrowLeft, Loader2, Terminal, Zap, AlertCircle, CheckCircle2, ChevronRight, XCircle, Code, Layers, Palette, Type as TypeIcon, Rocket, Target, LayoutTemplate } from 'lucide-react';
 import { analyzeDesign, generateTemplateImage } from '../services/geminiService';
 import { DesignReference, DesignPromptJson, AspectRatio, UsageLog } from '../types';
 
@@ -195,7 +195,18 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
                     <p className="text-sm text-slate-500 italic">Extracted: {result.json?.template_name || 'Unknown Blueprint'}</p>
                   </div>
 
-                  <div className="flex items-center space-x-3 bg-slate-800/50 p-2 rounded-2xl border border-slate-700/50">
+                  <div className="flex items-center space-x-2 bg-slate-800/50 p-1.5 rounded-xl border border-slate-700/50">
+                    <LayoutTemplate size={14} className="ml-2 text-slate-500" />
+                    <select
+                      value={result.json.blueprint_type || 'headline'}
+                      onChange={(e) => setResult({ ...result, json: { ...result.json, blueprint_type: e.target.value as any } })}
+                      className="bg-transparent text-xs font-bold text-slate-300 outline-none px-2 cursor-pointer w-24"
+                    >
+                      <option value="headline" className="bg-slate-900">Headline</option>
+                      <option value="carousel" className="bg-slate-900">Carousel</option>
+                      <option value="mixed" className="bg-slate-900">Mixed</option>
+                    </select>
+                    <div className="w-px h-4 bg-slate-700 mx-1" />
                     <select
                       value={ratio}
                       onChange={(e) => setRatio(e.target.value as AspectRatio)}
@@ -203,15 +214,15 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
                     >
                       {['1:1', '9:16', '16:9', '4:3', '3:4'].map(r => <option key={r} value={r} className="bg-slate-900">{r}</option>)}
                     </select>
-                    <button
-                      onClick={handleGenerateTemplate}
-                      disabled={templateLoading}
-                      className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold text-white transition-all active:scale-95 flex items-center space-x-2"
-                    >
-                      {templateLoading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                      <span>{templateLoading ? 'Rendering...' : 'Validate Layout'}</span>
-                    </button>
                   </div>
+                  <button
+                    onClick={handleGenerateTemplate}
+                    disabled={templateLoading}
+                    className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold text-white transition-all active:scale-95 flex items-center space-x-2 shadow-lg shadow-indigo-900/20"
+                  >
+                    {templateLoading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                    <span>{templateLoading ? 'Rendering...' : 'Validate'}</span>
+                  </button>
                 </div>
 
                 <div className="flex-1 min-h-[300px] bg-black rounded-[1.5rem] overflow-hidden border border-slate-800 flex items-center justify-center relative shadow-inner group">
@@ -321,6 +332,16 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
                 icon={<Target size={14} className={result.json.structural_rules.has_character_slot ? "text-green-400" : "text-slate-600"} />}
                 label="Character Slot"
                 value={result.json.structural_rules.has_character_slot ? "Detected" : "None"}
+              />
+              <VariableBox
+                icon={<Palette size={14} className="text-slate-200" />}
+                label="Dark Theme"
+                value={result.json.structural_rules.dark_theme_adaptation || 'Standard'}
+              />
+              <VariableBox
+                icon={<Palette size={14} className="text-white" />}
+                label="Light Theme"
+                value={result.json.structural_rules.light_theme_adaptation || 'Standard'}
               />
             </div>
 

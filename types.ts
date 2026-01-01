@@ -26,6 +26,8 @@ export interface VisualStyle {
   composition_map: string;
   aesthetic_motifs: string;
   has_character_slot?: boolean; // NEW: Indicates if layout expects a character/mascot
+  dark_theme_adaptation?: string; // NEW: Specific rules for dark mode adaptation
+  light_theme_adaptation?: string; // NEW: Specific rules for light mode adaptation
 }
 
 export interface BrandDNA {
@@ -35,10 +37,13 @@ export interface BrandDNA {
   brand_vibe: string;
   typography_notes: string;
   forbidden_styles: string[];
+  dark_mode_colors?: string[]; // NEW: Specific hex codes for dark mode
+  light_mode_colors?: string[]; // NEW: Specific hex codes for light mode
 }
 
 export interface DesignPromptJson {
   template_name: string;
+  blueprint_type?: 'headline' | 'carousel' | 'mixed'; // NEW: Categorize blueprint intent
   structural_rules: VisualStyle;
   layout_constraints: {
     forbidden_elements: string[];
@@ -70,7 +75,6 @@ export interface CarouselSlide {
   id: string;
   slideNumber: number;
   copyBrief: string;
-  styleBrief: string;
   generatedImage?: string;
 }
 

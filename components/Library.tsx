@@ -1,9 +1,9 @@
 
 import React, { useState, useRef } from 'react';
 /* Added missing XCircle to the import list from lucide-react */
-import { Search, Tag, Trash2, ExternalLink, Download, ArrowLeft, Filter, Grid, List as ListIcon, ImageIcon, LayoutTemplate, Copy, Check, Palette, ShieldAlert, Zap, History, FileCode, Terminal, Rocket, Clock, MessageSquare, Send, Loader2, Upload, AlertCircle, Eye, XCircle, Type as TypeIcon, Target, Users, Wand2, Layers } from 'lucide-react';
+import { Search, Tag, Trash2, ExternalLink, Download, ArrowLeft, Filter, Grid, List as ListIcon, ImageIcon, LayoutTemplate, Copy, Check, Palette, ShieldAlert, Zap, History, FileCode, Terminal, Rocket, Clock, MessageSquare, Send, Loader2, Upload, AlertCircle, Eye, XCircle, Type as TypeIcon, Target, Users, Wand2, Layers, Sparkles } from 'lucide-react';
 import { DesignReference, BrandReference, GeneratedPost, RetouchHistory, UsageLog, CharacterReference, GeneratedCharacterPose, GeneratedCarousel } from '../types';
-import { refinePostImage } from '../services/geminiService';
+import { refinePostImage, analyzeBrand, analyzeDesign } from '../services/geminiService';
 import AnnotationCanvas from './AnnotationCanvas';
 
 interface LibraryProps {
@@ -56,11 +56,32 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, g
   // CRUD State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
 
   const handleEditStart = (id: string, currentName: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingId(id);
     setEditValue(currentName);
+  };
+
+  const handleRefreshDNA = async (type: 'brand' | 'ref', item: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (refreshingId) return;
+
+    setRefreshingId(item.id);
+    try {
+      if (type === 'brand') {
+        const { dna } = await analyzeBrand(item.imageSource);
+        onUpdateBrand({ ...item, dna });
+      } else {
+        const { json } = await analyzeDesign(item.imageSource);
+        onUpdateReference({ ...item, jsonSpec: json });
+      }
+    } catch (err) {
+      console.error("Failed to refresh DNA:", err);
+    } finally {
+      setRefreshingId(null);
+    }
   };
 
   const handleEditSave = (type: 'ref' | 'brand', original: any, e: React.KeyboardEvent | React.FocusEvent) => {
@@ -285,6 +306,9 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, g
                 <img src={brand.imageSource} className="max-w-full max-h-full object-contain opacity-60 group-hover:opacity-100" alt={brand.name} />
                 <div className="absolute top-4 right-4 flex space-x-2">
                   <button onClick={(e) => handleEditStart(brand.id, brand.name, e)} className="p-2 rounded-lg bg-slate-800/80 text-slate-400 hover:text-white opacity-0 group-hover:opacity-100 transition-all"><FileCode size={14} /></button>
+                  <button onClick={(e) => handleRefreshDNA('brand', brand, e)} className={`p-2 rounded-lg bg-slate-800/80 text-slate-400 hover:text-pink-400 opacity-0 group-hover:opacity-100 transition-all ${refreshingId === brand.id ? 'animate-spin text-pink-500 opacity-100' : ''}`} disabled={!!refreshingId} title="Refresh DNA (Updates Theme Data)">
+                    {refreshingId === brand.id ? <Loader2 size={14} /> : <Sparkles size={14} />}
+                  </button>
                 </div>
               </div>
               <div className="p-5 flex items-center justify-between border-t border-slate-800/50">
@@ -314,6 +338,11 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, g
                 <div className="aspect-[4/5] bg-black">
                   <img src={ref.imageSource} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt={ref.name} />
                   <div className="absolute top-4 right-4"><span className="px-2 py-1 rounded-md bg-indigo-500/20 text-indigo-400 text-[8px] font-bold border border-indigo-500/30 uppercase">Source DNA</span></div>
+                  <div className="absolute bottom-4 right-4 flex space-x-2">
+                    <button onClick={(e) => handleRefreshDNA('ref', ref, e)} className={`p-2 rounded-lg bg-black/50 backdrop-blur-md text-slate-400 hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all ${refreshingId === ref.id ? 'animate-spin text-indigo-500 opacity-100' : ''}`} disabled={!!refreshingId} title="Refresh DNA">
+                      {refreshingId === ref.id ? <Loader2 size={14} /> : <Sparkles size={14} />}
+                    </button>
+                  </div>
                 </div>
                 <div className="p-5 flex items-center justify-between border-t border-slate-800/50">
                   <h4 className="font-bold text-white truncate">{ref.name}</h4>
@@ -336,7 +365,12 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, g
                       <p className="text-[10px] font-mono uppercase tracking-widest opacity-40">Layout Only</p>
                     </div>
                   )}
-                  <div className="absolute top-4 right-4"><span className="px-2 py-1 rounded-md bg-blue-500/20 text-blue-400 text-[8px] font-bold border border-blue-500/30 uppercase">Structure BP</span></div>
+                  <div className="absolute top-4 right-4"><span className={`px-2 py-1 rounded-md text-[8px] font-bold border uppercase ${ref.jsonSpec.blueprint_type === 'carousel' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>{ref.jsonSpec.blueprint_type || 'Headline'} BP</span></div>
+                  <div className="absolute bottom-4 right-4 flex space-x-2">
+                    <button onClick={(e) => handleRefreshDNA('ref', ref, e)} className={`p-2 rounded-lg bg-black/50 backdrop-blur-md text-slate-400 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all ${refreshingId === ref.id ? 'animate-spin text-blue-500 opacity-100' : ''}`} disabled={!!refreshingId} title="Refresh DNA (Get Theme Rules)">
+                      {refreshingId === ref.id ? <Loader2 size={14} /> : <Sparkles size={14} />}
+                    </button>
+                  </div>
                 </div>
                 <div className="p-5 flex items-center justify-between border-t border-slate-800/50">
                   {editingId === ref.id ? (
@@ -603,6 +637,7 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, g
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <VariableBox icon={<LayoutTemplate size={14} className="text-white" />} label="Typology" value={selectedRef.jsonSpec.blueprint_type || 'Headline'} />
                     <VariableBox icon={<Zap size={14} className="text-yellow-400" />} label="Archetype" value={selectedRef.jsonSpec.structural_rules.layout_archetype} />
                     <VariableBox icon={<Grid size={14} className="text-indigo-400" />} label="Composition" value={selectedRef.jsonSpec.structural_rules.composition_map} />
                     <VariableBox icon={<Palette size={14} className="text-pink-400" />} label="Aesthetics" value={selectedRef.jsonSpec.structural_rules.aesthetic_motifs} />

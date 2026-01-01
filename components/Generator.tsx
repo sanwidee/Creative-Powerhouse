@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Rocket, Sparkles, ArrowLeft, ChevronDown, ImageIcon, Loader2, Copy, Check, Zap, AlertCircle, RefreshCw, Send, Palette, XCircle, Layers, Save, Target, LayoutTemplate, FileCode, Eye } from 'lucide-react';
+import { Rocket, Sparkles, ArrowLeft, ChevronDown, ImageIcon, Loader2, Copy, Check, Zap, AlertCircle, RefreshCw, Send, Palette, XCircle, Layers, Save, Target, LayoutTemplate, FileCode, Eye, Sun, Moon, Wand2 } from 'lucide-react';
 import { DesignReference, BrandReference, RemixIntensity, ContentBrief, AspectRatio, GeneratedPost, CharacterReference, GeminiModel } from '../types';
 import { generatePostFromReference, generateRemixImage, refinePostImage, getPostPromptData } from '../services/geminiService';
 import AnnotationCanvas from './AnnotationCanvas';
@@ -47,6 +47,7 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
   const [promptPreview, setPromptPreview] = useState<PromptData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [modelType, setModelType] = useState<GeminiModel>('flash');
+  const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'auto'>('auto');
 
   const selectedRef = references.find(r => r.id === selectedId);
   const selectedBrand = brands.find(b => b.id === selectedBrandId);
@@ -74,7 +75,8 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
         intensity,
         selectedBrand?.dna,
         selectedCharacter?.dna,
-        modelType
+        modelType,
+        themeMode
       );
       setResultText(report);
 
@@ -84,7 +86,7 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
           finalVisualPrompt,
           brief.aspectRatio,
           selectedCharacter?.dna,
-          'pro' // Always use pro for image generation for highest quality
+          modelType // Respect user selection
         );
         setRemixImage(img);
         setImageLoading(false);
@@ -109,7 +111,8 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
       finalBrief,
       intensity,
       selectedBrand?.dna,
-      selectedCharacter?.dna
+      selectedCharacter?.dna,
+      themeMode
     );
     setPromptPreview(data);
   };
@@ -281,10 +284,7 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
             </div>
 
             <div className="flex-1 space-y-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest ml-1">Main Topic / Headline</label>
-                <input type="text" placeholder="e.g. 5 Habits of Successful Leaders" className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none transition-all" value={brief.topic} onChange={(e) => setBrief({ ...brief, topic: e.target.value })} />
-              </div>
+              {/* TOPIC INPUT REMOVED per user request for single-context flow */}
 
               {precisionMode ? (
                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -358,6 +358,30 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
 
                     <div className="flex items-center bg-slate-800/60 p-1 rounded-xl border border-slate-700/30">
                       <button
+                        onClick={() => setThemeMode('light')}
+                        className={`p-1.5 rounded-lg transition-all ${themeMode === 'light' ? 'bg-white text-black shadow-lg' : 'text-slate-500 hover:text-white'}`}
+                        title="Force Light Theme"
+                      >
+                        <Sun size={14} />
+                      </button>
+                      <button
+                        onClick={() => setThemeMode('dark')}
+                        className={`p-1.5 rounded-lg transition-all ${themeMode === 'dark' ? 'bg-slate-950 text-white shadow-lg border border-slate-700' : 'text-slate-500 hover:text-white'}`}
+                        title="Force Dark Theme"
+                      >
+                        <Moon size={14} />
+                      </button>
+                      <button
+                        onClick={() => setThemeMode('auto')}
+                        className={`px-2 py-1.5 rounded-lg text-[9px] font-bold transition-all ${themeMode === 'auto' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-white'}`}
+                        title="Auto (Based on DNA)"
+                      >
+                        AUTO
+                      </button>
+                    </div>
+
+                    <div className="flex items-center bg-slate-800/60 p-1 rounded-xl border border-slate-700/30">
+                      <button
                         onClick={() => setModelType('flash')}
                         className={`px-3 py-1 rounded-lg text-[9px] font-bold transition-all ${modelType === 'flash' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
                       >
@@ -376,13 +400,13 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={handlePreviewPrompt}
-                    disabled={!selectedId || !brief.topic}
+                    disabled={!selectedId}
                     className="py-4 rounded-2xl font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all flex items-center justify-center space-x-2"
                   >
                     <Eye size={18} />
                     <span>View Prompt</span>
                   </button>
-                  <button onClick={handleGenerate} disabled={loading || !selectedId || !brief.topic} className={`py-4 rounded-2xl font-bold flex items-center justify-center space-x-3 transition-all ${loading ? 'bg-slate-800 text-slate-500' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl hover:shadow-indigo-500/20'}`}>
+                  <button onClick={handleGenerate} disabled={loading || !selectedId} className={`py-4 rounded-2xl font-bold flex items-center justify-center space-x-3 transition-all ${loading ? 'bg-slate-800 text-slate-500' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl hover:shadow-indigo-500/20'}`}>
                     {loading ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
                     <span>{loading ? 'SYNTHESIZING...' : 'Deploy'}</span>
                   </button>
@@ -473,37 +497,40 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
             </div>
           </div>
         </div>
-      </div>
 
-      {isAnnotating && remixImage && (
-        <AnnotationCanvas
-          imageSource={remixImage}
-          onCancel={() => setIsAnnotating(false)}
-          onSave={(sketch) => {
-            setAnnotationSketch(sketch);
-            setIsAnnotating(false);
-          }}
-        />
-      )}
+        {isAnnotating && remixImage && (
+          <AnnotationCanvas
+            imageSource={remixImage}
+            onCancel={() => setIsAnnotating(false)}
+            onSave={(sketch) => {
+              setAnnotationSketch(sketch);
+            }}
+          />
+        )
+        }
 
-      {/* FULL PREVIEW MODAL */}
-      {fullPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/95 animate-in fade-in duration-300">
-          <button onClick={() => setFullPreview(null)} className="absolute top-8 right-8 p-4 text-white/50 hover:text-white transition-colors bg-white/5 rounded-full border border-white/10">
-            <XCircle size={32} />
-          </button>
-          <img src={fullPreview} className="max-w-full max-h-full object-contain shadow-2xl rounded-lg border border-white/10" alt="Full Preview" />
-        </div>
-      )}
+        {
+          fullPreview && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/95 animate-in fade-in duration-300">
+              <button onClick={() => setFullPreview(null)} className="absolute top-8 right-8 p-4 text-white/50 hover:text-white transition-colors bg-white/5 rounded-full border border-white/10">
+                <XCircle size={32} />
+              </button>
+              <img src={fullPreview} className="max-w-full max-h-full object-contain shadow-2xl rounded-lg border border-white/10" alt="Full Preview" />
+            </div>
+          )
+        }
 
-      {promptPreview && (
-        <PromptPreviewModal
-          data={promptPreview}
-          onClose={() => setPromptPreview(null)}
-          title="Post Generator Prompt"
-        />
-      )}
-    </div>
+        {
+          promptPreview && (
+            <PromptPreviewModal
+              data={promptPreview}
+              onClose={() => setPromptPreview(null)}
+              title="Post Generator Prompt"
+            />
+          )
+        }
+      </div >
+    </div >
   );
 };
 
