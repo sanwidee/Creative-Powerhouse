@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 /* Added missing XCircle to the import list from lucide-react */
-import { Search, Tag, Trash2, ExternalLink, Download, ArrowLeft, Filter, Grid, List as ListIcon, ImageIcon, LayoutTemplate, Copy, Check, Palette, ShieldAlert, Zap, History, FileCode, Terminal, Rocket, Clock, MessageSquare, Send, Loader2, Upload, AlertCircle, Eye, XCircle, Type as TypeIcon, Target, Users, Wand2, Layers, Sparkles } from 'lucide-react';
+import { Search, Tag, Trash2, ExternalLink, Download, ArrowLeft, Filter, Grid, List as ListIcon, ImageIcon, LayoutTemplate, Copy, Check, Palette, ShieldAlert, Zap, History, FileCode, Terminal, Rocket, Clock, MessageSquare, Send, Loader2, Upload, AlertCircle, Eye, XCircle, Type as TypeIcon, Target, Users, Wand2, Layers, Sparkles, Moon, Sun } from 'lucide-react';
 import { DesignReference, BrandReference, GeneratedPost, RetouchHistory, UsageLog, CharacterReference, GeneratedCharacterPose, GeneratedCarousel } from '../types';
 import { refinePostImage, analyzeBrand, analyzeDesign } from '../services/geminiService';
 import AnnotationCanvas from './AnnotationCanvas';
@@ -306,7 +306,7 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, g
                 <img src={brand.imageSource} className="max-w-full max-h-full object-contain opacity-60 group-hover:opacity-100" alt={brand.name} />
                 <div className="absolute top-4 right-4 flex space-x-2">
                   <button onClick={(e) => handleEditStart(brand.id, brand.name, e)} className="p-2 rounded-lg bg-slate-800/80 text-slate-400 hover:text-white opacity-0 group-hover:opacity-100 transition-all"><FileCode size={14} /></button>
-                  <button onClick={(e) => handleRefreshDNA('brand', brand, e)} className={`p-2 rounded-lg bg-slate-800/80 text-slate-400 hover:text-pink-400 opacity-0 group-hover:opacity-100 transition-all ${refreshingId === brand.id ? 'animate-spin text-pink-500 opacity-100' : ''}`} disabled={!!refreshingId} title="Refresh DNA (Updates Theme Data)">
+                  <button onClick={(e) => handleRefreshDNA('brand', brand, e)} className={`p-2 rounded-lg bg-slate-800/80 text-slate-400 hover:text-pink-400 opacity-0 group-hover:opacity-100 transition-all ${refreshingId === brand.id ? 'animate-spin text-pink-500 opacity-100' : ''} ${!brand.dna.dark_mode_colors && !refreshingId ? 'text-pink-400 opacity-100 animate-pulse' : ''}`} disabled={!!refreshingId} title="Refresh DNA (Updates Theme Data)">
                     {refreshingId === brand.id ? <Loader2 size={14} /> : <Sparkles size={14} />}
                   </button>
                 </div>
@@ -323,7 +323,14 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, g
                     onClick={(e) => e.stopPropagation()}
                   />
                 ) : (
-                  <h4 className="font-bold text-white truncate">{brand.name}</h4>
+                  <div className="flex flex-col">
+                    <h4 className="font-bold text-white truncate">{brand.name}</h4>
+                    {brand.dna.dark_mode_colors ? (
+                      <div className="flex items-center space-x-1 mt-1"><Moon size={10} className="text-slate-500" /><Sun size={10} className="text-slate-500" /><span className="text-[10px] text-slate-600 font-bold uppercase">Theme Ready</span></div>
+                    ) : (
+                      <div className="flex items-center space-x-1 mt-1"><span className="text-[10px] text-pink-500/50 font-bold uppercase italic">Refresh to Upgrade</span></div>
+                    )}
+                  </div>
                 )}
                 <button onClick={(e) => { e.stopPropagation(); onDeleteBrand(brand.id); }} className="p-2 text-slate-600 hover:text-red-400"><Trash2 size={16} /></button>
               </div>
@@ -367,7 +374,7 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, g
                   )}
                   <div className="absolute top-4 right-4"><span className={`px-2 py-1 rounded-md text-[8px] font-bold border uppercase ${ref.jsonSpec.blueprint_type === 'carousel' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>{ref.jsonSpec.blueprint_type || 'Headline'} BP</span></div>
                   <div className="absolute bottom-4 right-4 flex space-x-2">
-                    <button onClick={(e) => handleRefreshDNA('ref', ref, e)} className={`p-2 rounded-lg bg-black/50 backdrop-blur-md text-slate-400 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all ${refreshingId === ref.id ? 'animate-spin text-blue-500 opacity-100' : ''}`} disabled={!!refreshingId} title="Refresh DNA (Get Theme Rules)">
+                    <button onClick={(e) => handleRefreshDNA('ref', ref, e)} className={`p-2 rounded-lg bg-black/50 backdrop-blur-md text-slate-400 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all ${refreshingId === ref.id ? 'animate-spin text-blue-500 opacity-100' : ''} ${!ref.jsonSpec.structural_rules.dark_theme_adaptation && !refreshingId ? 'text-blue-400 opacity-100 animate-pulse' : ''}`} disabled={!!refreshingId} title="Refresh DNA (Get Theme Rules)">
                       {refreshingId === ref.id ? <Loader2 size={14} /> : <Sparkles size={14} />}
                     </button>
                   </div>
@@ -384,7 +391,14 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, g
                       onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
-                    <h4 className="font-bold text-white truncate text-sm">{ref.name}</h4>
+                    <div className="flex flex-col">
+                      <h4 className="font-bold text-white truncate text-sm">{ref.name}</h4>
+                      {ref.jsonSpec.structural_rules.dark_theme_adaptation ? (
+                        <div className="flex items-center space-x-1 mt-1"><Moon size={10} className="text-slate-500" /><Sun size={10} className="text-slate-500" /><span className="text-[10px] text-slate-600 font-bold uppercase">Theme Ready</span></div>
+                      ) : (
+                        <div className="flex items-center space-x-1 mt-1"><span className="text-[10px] text-blue-500/50 font-bold uppercase italic">Refresh to Upgrade</span></div>
+                      )}
+                    </div>
                   )}
                   <div className="flex items-center">
                     <button onClick={(e) => handleEditStart(ref.id, ref.name, e)} className="p-2 text-slate-600 hover:text-blue-400"><FileCode size={14} /></button>
