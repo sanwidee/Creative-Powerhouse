@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
-import { DesignPromptJson, ContentBrief, BrandDNA, AspectRatio, UsageLog, CharacterDNA, CharacterArtStyle, PromptData, GeminiModel, ModelPreference } from "../types";
+import { DesignPromptJson, ContentBrief, BrandDNA, AspectRatio, UsageLog, CharacterDNA, CharacterArtStyle, PromptData, GeminiModel, ModelPreference, AudioDNA } from "../types";
 
 
 const PRICING = {
@@ -77,48 +77,48 @@ export const analyzeDesign = async (imageB64: string, userNotes?: string): Promi
   };
 
   const textPart = {
-    text: `You are a World-Class Creative Director and Design Systems Engineer. 
-  Task: Deconstruct the provided social media post into its modular "Design DNA".
+    text: `You are a World-Class Design Engineer.
+  Task: Deconstruct the provided social media post into a FUNCTIONAL WIREFRAME.
   
   User Focus Notes: ${userNotes || 'Standard analysis'}.
 
-  1. IDENTIFY THE ARCHETYPE: Is it a "Headline Listicle", "Minimalist Quote", "Product Showcase", "Infographic Guide", or "Character-Led Story"?
-  2. ANALYZE COMPOSITION: Note where the text blocks are anchored, where the focal point (image/illustration) is placed, and the background texture/pattern.
-  3. EXTRACT TYPOGRAPHY: Identify font weights (bold/thin), casing (uppercase/mixed), and spacing logic.
+  GOAL: We need to know "What Goes Where" so we can swap text/images while keeping the layout EXACTLY the same.
+  
+  1. IDENTIFY THE ARCHETYPE: Headline Listicle, Product Showcase, Quote, etc.
+  2. MAP THE CONTENT SLOTS: Identify EVERY piece of text and its location.
 
   Output Format:
-  1. Detailed Markdown Report describing the "Why" of the design.
+  1. Detailed Markdown Report.
   2. The string "---JSON_START---".
-  3. A JSON object with this exact structure:
+  3. A JSON object:
   {
-    "template_name": "A catchy name for this layout style",
+    "template_name": "Name of layout",
     "structural_rules": {
-      "layout_archetype": "Specific category like 'Educational Listicle'",
-      "typography_system": "Detailed description of font pairing and weights",
-      "color_grammar": "Palette description with hex codes if visible",
-      "composition_map": "Map of element positioning (e.g., Top-Left Text, Bottom-Right Graphic)",
-      "aesthetic_motifs": "Visual details like 'Grainy texture, 3D elements, paper tear effect'",
+      "layout_archetype": "Category",
+      "typography_system": "Font weights/styles used",
+      "composition_map": "Brief description of element placement",
       "has_character_slot": true,
-      "dark_theme_adaptation": "Specific rules for adapting this to dark mode (e.g. 'Use #1a1a1a bg, white text')",
-      "light_theme_adaptation": "Specific rules for adapting this to light mode (e.g. 'Use #f0f0f0 bg, charcoal text')"
+      "dark_theme_adaptation": "Dark mode rule",
+      "light_theme_adaptation": "Light mode rule"
     },
     "layout_constraints": {
-      "forbidden_elements": ["List of things that would break this style"],
-      "mandatory_anchors": ["Key elements that must stay in place"],
-      "white_space_logic": "How much breathing room is used"
-    },
-    "placeholder_map": {
-      "body_style": "Visual style for subtext",
-      "cta_style": "Visual style for buttons/links"
+      "forbidden_elements": ["What breaks the layout"],
+      "mandatory_anchors": ["What must stay fixed"],
+      "white_space_logic": "Breathing room description"
     },
     "content_registry": [
-      { "id": "headline", "label": "Main Headline", "placeholder": "The current text found in image", "type": "text" }
+      { 
+        "id": "headline_1", 
+        "label": "Main Title", 
+        "placeholder": "Current text in image", 
+        "type": "text", 
+        "description": "Top center, large bold sans-serif" 
+      }
     ],
-    "base_visual_dna_prompt": "A highly descriptive prompt for an image generator to recreate the LAYOUT and STYLE of this image but without the specific text. Describe the composition, textures, lighting, and placement of elements clearly."
+    "base_visual_dna_prompt": "IGNORE THIS FIELD. VISUAL ANCHOR ACTIVE."
   }
   
-  IMPORTANT: The 'has_character_slot' should be TRUE if there is a mascot, character, or prominent human-like figure in the design that serves as a focal point.
-  IMPORTANT: Do not use generic words like 'Standard' or 'Unknown'. Be descriptive.` };
+  IMPORTANT: The 'has_character_slot' should be TRUE if there is a mascot/person.` };
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
@@ -142,9 +142,7 @@ export const analyzeDesign = async (imageB64: string, userNotes?: string): Promi
       jsonData.structural_rules = {
         layout_archetype: "Modern Graphic",
         typography_system: "Bold Sans-Serif",
-        color_grammar: "High-Contrast Vibrant",
         composition_map: "Centered Headline, Bottom Illustration",
-        aesthetic_motifs: "Clean edges, soft shadows",
         dark_theme_adaptation: "Deep slate background, neon blue accents, white text",
         light_theme_adaptation: "Pale grey background, royal blue accents, navy text"
       };
@@ -152,13 +150,12 @@ export const analyzeDesign = async (imageB64: string, userNotes?: string): Promi
 
     if (!jsonData.content_registry) {
       jsonData.content_registry = [
-        { id: 'headline', label: 'Main Headline', placeholder: 'Enter headline...', type: 'text' }
+        { id: 'headline', label: 'Main Headline', type: 'text', description: 'Primary focal text' }
       ];
     }
 
-    if (!jsonData.base_visual_dna_prompt || jsonData.base_visual_dna_prompt.includes('UNDEFINED')) {
-      jsonData.base_visual_dna_prompt = "A modern professional social media post layout with a clean background, a large bold headline at the top, and a relevant graphic illustration in the center. Studio lighting, high quality graphic design style.";
-    }
+    // Legacy cleanup
+    jsonData.base_visual_dna_prompt = "IGNORE THIS FIELD. VISUAL ANCHOR ACTIVE.";
 
     const usageLog = await recordUsage('Design Builder DNA', 'gemini-3-flash-preview', response);
     return { markdown: markdown.trim(), json: jsonData, usage: usageLog };
@@ -200,10 +197,9 @@ export const analyzeBrand = async (imageB64: string): Promise<{ dna: BrandDNA, u
 
 export const generateTemplateImage = async (jsonSpec: DesignPromptJson, ratio: AspectRatio): Promise<{ image: string, usage: UsageLog }> => {
   const ai = getAI();
-  const templatePrompt = `Create a high-fidelity design mockup based on these rules: ${jsonSpec.base_visual_dna_prompt}. 
+  const templatePrompt = `Create a high-fidelity design mockup.
   The layout is a ${jsonSpec.structural_rules.layout_archetype}. 
   Element placement: ${jsonSpec.structural_rules.composition_map}. 
-  Visual style: ${jsonSpec.structural_rules.aesthetic_motifs}. 
   Typography vibe: ${jsonSpec.structural_rules.typography_system}.
   Include placeholder text that says 'YOUR CONTENT HERE'. 
   Aspect Ratio: ${ratio}. Clean, professional social media graphic.`;
@@ -241,7 +237,8 @@ export const getPostPromptData = (
   intensity: string,
   brandOverride?: BrandDNA,
   characterDNA?: CharacterDNA,
-  theme: 'dark' | 'light' | 'auto' = 'auto'
+  theme: 'dark' | 'light' | 'auto' = 'auto',
+  referenceImageB64?: string
 ): PromptData => {
   const brandContext = brandOverride
     ? `BRAND RULES: ${JSON.stringify(brandOverride)}`
@@ -269,17 +266,44 @@ export const getPostPromptData = (
   ${theme === 'dark' ? (reference.structural_rules.dark_theme_adaptation || "Use deep charcoal/black backgrounds with high contrast white/light text. Invert standard colors.") : ''}
   ${theme === 'light' ? (reference.structural_rules.light_theme_adaptation || "Use smooth white/light gray backgrounds with dark text. Clean, airy look.") : ''}
 
-  COPY RULES:
-  - If the NEW BRIEF contains specific text/copy, you MUST include it in your visual prompt description.
-  - Explicitly state: "The image features text that says '[insert copy here]'."
-  - Do not summarize the text; use the exact words provided.
- 
+  FUNCTIONAL WIREFRAME INSTRUCTIONS:
+  You have been provided with a Source Image (Image 1) and a Content Registry (in Source DNA).
+  1. Your GOAL is to perform a text-swap and content-fill while preserving the EXACT structure and aesthetic of Image 1.
+  2. For each item in the 'content_registry' or 'structured_content', identify that specific element in Image 1.
+  3. Replace the text/content of that element with the new content provided in the BRIEF.
+  4. DO NOT hallucinate new layouts. Stick to the grid, spacing, and font hierarchy of Image 1.
+  
   Return a production report then ---PROMPT_START--- then a single-line visual prompt that includes the layout logic of the source DNA but with the new content from the brief.
   
   ${brief.structured_content ? `PRIORITY CONTENT MAPPING: The user provided specific text for these slots. Use them exactly: ${JSON.stringify(brief.structured_content)}` : ''}
   `;
 
-  return { text, images: [] };
+  // If we have a visual anchor, we strip away the "Text Noise" to prevent drift
+  if (referenceImageB64) {
+    return {
+      text: `VISUAL ANCHOR: I have attached the original blueprint as Image 1. 
+          
+          TASK: Create a pixel-perfect remix of Image 1.
+          - Copy the Composition: 100% Match.
+          - Copy the Lighting/Vibe: 100% Match.
+          - Copy the Typography Style: 100% Match.
+          
+          CHANGE ONLY THE CONTENT:
+          ${brief.structured_content
+          ? `Map the following specific new text into the layout's existing slots:\n${JSON.stringify(brief.structured_content, null, 2)}`
+          : `Update the text content to match this brief: "${brief.elements_to_display}"`
+        }
+
+          ${characterCtx}
+          ${brandContext}
+          ${carouselCtx}
+          
+          OUTPUT INSTRUCTION: Return a precise visual prompt description that tells the image generator to "Reproduce Image 1 exactly, but with the text changed to [New Text]".`,
+      images: [referenceImageB64]
+    };
+  }
+
+  return { text, images: referenceImageB64 ? [referenceImageB64] : [] };
 };
 
 export const generatePostFromReference = async (
@@ -289,16 +313,29 @@ export const generatePostFromReference = async (
   brandOverride?: BrandDNA,
   characterDNA?: CharacterDNA,
   modelType: GeminiModel = 'flash',
-  theme: 'dark' | 'light' | 'auto' = 'auto'
+  theme: 'dark' | 'light' | 'auto' = 'auto',
+  referenceImageB64?: string
 ): Promise<{ report: string, finalVisualPrompt: string, usage: UsageLog }> => {
   const ai = getAI();
-  const promptData = getPostPromptData(reference, brief, intensity, brandOverride, characterDNA, theme);
+  const promptData = getPostPromptData(reference, brief, intensity, brandOverride, characterDNA, theme, referenceImageB64);
   const modelName = MODEL_MAP[modelType].text;
+
+  const parts: any[] = [];
+  if (promptData.images.length > 0) {
+    parts.push({
+      inlineData: {
+        mimeType: 'image/jpeg',
+        data: promptData.images[0].split(',')[1] || promptData.images[0]
+      }
+    });
+    // Visual anchor text is already set in getPostPromptData for this case
+  }
+  parts.push({ text: promptData.text });
 
   // Use parts structure for stability
   const response = await ai.models.generateContent({
     model: modelName,
-    contents: { parts: [{ text: promptData.text }] }
+    contents: { parts }
   });
 
   const raw = response.text || '';
@@ -613,4 +650,38 @@ export const generateCharacterPose = async (
     if (part.inlineData) return { image: `data:image/png;base64,${part.inlineData.data}`, usage: usageLog };
   }
   throw new Error("Character pose generation failed to render.");
+};
+
+export const generateAudio = async (text: string, dna: AudioDNA): Promise<{ audioData: string, usage: UsageLog }> => {
+  // Mock implementation for UI flow testing
+  // In reality, this would call Gemini 2.0 Flash Exp or fallback to Browser TTS
+
+  console.log("Simulating Audio Gen for:", text, dna);
+
+  // Simulate API delay
+  await new Promise(r => setTimeout(r, 1000));
+
+  // For now we assume the browser will handle the playback if we return a success signal or empty.
+  // However, the UI expects a URL/Base64. 
+  // Since we are "Exploratory", let's return a dummy that triggers the UI's "Ready" state, 
+  // but actual playback might need to handle "if dummy, use TTS". 
+  // Actually, let's just use Browser TTS inside this function if possible? 
+  // No, `window` is available in frontend but this is a service file. It should be fine.
+
+  // Return a dummy base64 MP3 (silence) to satisfy the type.
+  const mockAudio = "data:audio/mp3;base64,//uQRAAAAWMSLwUIYAPAAA";
+
+  return {
+    audioData: mockAudio,
+    usage: {
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      feature: 'Audio Lab' as any,
+      model: 'gemini-voice-preview',
+      inputTokens: 100,
+      outputTokens: 500,
+      costUSD: 0.01,
+      costIDR: 155
+    }
+  };
 };

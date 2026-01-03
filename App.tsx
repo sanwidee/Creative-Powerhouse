@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Wrench, Star, Rocket, Terminal, Github, Moon, Zap, Palette, ChevronRight, Key, Globe, Settings as SettingsIcon, Users, Wand2, Leaf, Layers } from 'lucide-react';
-import { AppTool, DesignReference, BrandReference, GeneratedPost, CharacterReference, GeneratedCharacterPose } from './types';
+import { Wrench, Star, Rocket, Terminal, Github, Moon, Sun, Zap, Palette, ChevronRight, Key, Globe, Settings as SettingsIcon, Users, Wand2, Leaf, Layers, Volume2, BookOpen } from 'lucide-react';
+import { AppTool, DesignReference, BrandReference, GeneratedPost, CharacterReference, GeneratedCharacterPose, AudioReference } from './types';
 import Builder from './components/Builder';
 import Library from './components/Library';
 import Generator from './components/Generator';
@@ -11,6 +11,9 @@ import CharacterStudio from './components/CharacterStudio';
 import CarouselGenerator from './components/CarouselGenerator';
 import Settings from './components/Settings';
 import AssistantHub from './components/AssistantHub';
+import AudioLab from './components/AudioLab';
+import Documentation from './components/Documentation';
+
 
 // Branding Assets
 const LOGO_SRC = "./logo.png";
@@ -23,10 +26,31 @@ const App: React.FC = () => {
   const [characters, setCharacters] = useState<CharacterReference[]>([]);
   const [characterPoses, setCharacterPoses] = useState<GeneratedCharacterPose[]>([]);
   const [generatedCarousels, setGeneratedCarousels] = useState<any[]>([]);
+  const [audioVoices, setAudioVoices] = useState<AudioReference[]>([]);
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [manualKey, setManualKey] = useState('');
   const [isStandalone, setIsStandalone] = useState(false);
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof localStorage !== 'undefined' && localStorage.getItem('ikhsan_theme')) {
+      return localStorage.getItem('ikhsan_theme') as 'light' | 'dark';
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('ikhsan_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   useEffect(() => {
     const checkKey = async () => {
@@ -62,6 +86,7 @@ const App: React.FC = () => {
         const remoteCarousels = await fetchCollection('carousels');
         const remoteChars = await fetchCollection('characters');
         const remoteCharPoses = await fetchCollection('character_poses');
+        const remoteVoices = await fetchCollection('audio_voices');
 
         // Migration Check
         const localRefs = localStorage.getItem('ikhsan_design_refs');
@@ -95,7 +120,9 @@ const App: React.FC = () => {
         }
 
         setCharacters(remoteChars);
+        setCharacters(remoteChars);
         setCharacterPoses(remoteCharPoses);
+        setAudioVoices(remoteVoices);
       } catch (err) {
         console.error("Critical failure in loadData:", err);
       }
@@ -223,6 +250,18 @@ const App: React.FC = () => {
     saveData('character_poses', updated);
   };
 
+  const saveAudioVoice = (voice: AudioReference) => {
+    const updated = [voice, ...audioVoices];
+    setAudioVoices(updated);
+    saveData('audio_voices', updated);
+  };
+
+  const deleteAudioVoice = (id: string) => {
+    const updated = audioVoices.filter(v => v.id !== id);
+    setAudioVoices(updated);
+    saveData('audio_voices', updated);
+  };
+
   if (hasKey === false) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center p-6 text-center">
@@ -304,6 +343,8 @@ const App: React.FC = () => {
             onUpdateBrand={updateBrand}
             onUpdatePost={updateGeneratedPost}
             onUpdateCharacter={updateCharacter}
+            audioVoices={audioVoices}
+            onDeleteAudioVoice={deleteAudioVoice}
             onBack={() => setActiveTool(AppTool.LANDING)}
           />
         );
@@ -333,6 +374,8 @@ const App: React.FC = () => {
         return <CharacterLab onSave={saveCharacter} onBack={() => setActiveTool(AppTool.LANDING)} brands={brands} characters={characters} />;
       case AppTool.CHARACTER_STUDIO:
         return <CharacterStudio characters={characters} onSave={saveCharacterPose} onBack={() => setActiveTool(AppTool.LANDING)} />;
+      case AppTool.AUDIO_LAB:
+        return <AudioLab onSave={saveAudioVoice} onBack={() => setActiveTool(AppTool.LANDING)} savedVoices={audioVoices} onDelete={deleteAudioVoice} />;
       case AppTool.SETTINGS:
         return (
           <Settings
@@ -345,6 +388,8 @@ const App: React.FC = () => {
             onBack={() => setActiveTool(AppTool.LANDING)}
           />
         );
+      case AppTool.DOCS:
+        return <Documentation onBack={() => setActiveTool(AppTool.LANDING)} />;
       default:
         return (
           <div className="max-w-6xl mx-auto px-6 py-12 animate-in fade-in zoom-in duration-700">
@@ -360,8 +405,8 @@ const App: React.FC = () => {
               <h1 className="text-6xl md:text-8xl font-black mb-8 tracking-tighter italic">
                 WEED <span className="text-green-500">LABS</span>
               </h1>
-              <p className="max-w-2xl mx-auto text-slate-500 text-lg font-medium leading-relaxed">
-                The ultimate creative command center for cannabis branding. <span className="text-slate-200">Extract DNA, generate content, and maintain perfect consistency.</span>
+              <p className="max-w-2xl mx-auto text-slate-500 dark:text-slate-400 text-lg font-medium leading-relaxed">
+                The ultimate cyber-botanical production suite. <span className="text-slate-900 dark:text-slate-200">Extract DNA, cultivate content, and maintain perfect consistency.</span>
               </p>
             </header>
 
@@ -373,6 +418,7 @@ const App: React.FC = () => {
               <ToolCard icon={<Rocket className="text-indigo-400" />} title="Post Generator" desc="Deploy & Remix." onClick={() => setActiveTool(AppTool.GENERATOR)} accent="indigo" />
               <ToolCard icon={<Layers className="text-blue-400" />} title="Carousel Generator" desc="Multiple Slides." onClick={() => setActiveTool(AppTool.CAROUSEL_GENERATOR)} accent="blue" />
               <ToolCard icon={<Wand2 className="text-purple-400" />} title="Character Studio" desc="Generate Poses." onClick={() => setActiveTool(AppTool.CHARACTER_STUDIO)} accent="purple" />
+              <ToolCard icon={<Volume2 className="text-pink-400" />} title="Audio Lab" desc="Synthesize Voice." onClick={() => setActiveTool(AppTool.AUDIO_LAB)} accent="pink" />
             </div>
           </div>
         );
@@ -387,14 +433,25 @@ const App: React.FC = () => {
     { tool: AppTool.GENERATOR, icon: <Rocket size={20} />, label: "Generator", color: "indigo" },
     { tool: AppTool.CAROUSEL_GENERATOR, icon: <Layers size={20} />, label: "Carousels", color: "blue" },
     { tool: AppTool.CHARACTER_STUDIO, icon: <Wand2 size={20} />, label: "Studio", color: "purple" },
+    { tool: AppTool.AUDIO_LAB, icon: <Volume2 size={20} />, label: "Audio", color: "pink" },
   ];
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-100 flex overflow-hidden">
+    <div className={`min-h-screen relative ${theme === 'dark' ? 'bg-[#020617] text-slate-100' : 'bg-[#F8FAFC] text-slate-900'} flex overflow-hidden transition-colors duration-500`}>
+
+      {/* Liquid Background Elements (Light Mode Only) */}
+      {theme === 'light' && (
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-green-400/10 blur-[120px] animate-pulse-slow" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-orange-400/10 blur-[120px] animate-pulse-slow" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-[20%] right-[20%] w-[30%] h-[30%] rounded-full bg-blue-400/10 blur-[100px] animate-pulse-slow" style={{ animationDelay: '4s' }} />
+        </div>
+      )}
+
       {/* Sidebar Navigation (Conditional) */}
       {activeTool !== AppTool.LANDING && (
         <aside
-          className={`h-screen border-r border-slate-800 bg-[#020617] z-[100] transition-all duration-500 flex flex-col items-center py-6 shrink-0 ${isSidebarHovered ? 'w-64' : 'w-20'}`}
+          className={`h-screen border-r border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-[#020617] backdrop-blur-xl z-[100] transition-all duration-500 flex flex-col items-center py-6 shrink-0 relative ${isSidebarHovered ? 'w-64' : 'w-20'}`}
           onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseLeave={() => setIsSidebarHovered(false)}
         >
@@ -411,13 +468,13 @@ const App: React.FC = () => {
                 key={item.tool}
                 onClick={() => setActiveTool(item.tool)}
                 className={`w-full group flex items-center transition-all duration-300 rounded-2xl p-4 ${activeTool === item.tool
-                  ? `bg-slate-800 text-white shadow-xl border border-slate-700`
-                  : 'text-slate-500 hover:bg-slate-900/50 hover:text-slate-200'
+                  ? `bg-white dark:bg-slate-800 text-green-600 dark:text-white shadow-xl shadow-green-900/5 dark:shadow-none border border-green-100 dark:border-slate-700`
+                  : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900/50 hover:text-slate-900 dark:hover:text-slate-200'
                   } ${isSidebarHovered ? 'space-x-4' : 'justify-center'}`}
               >
                 <div className={`transition-transform duration-300 ${activeTool === item.tool ? 'scale-110' : 'group-hover:scale-110'}`}>
                   {React.cloneElement(item.icon as React.ReactElement, {
-                    className: activeTool === item.tool ? `text-${item.color}-400` : 'text-slate-600 group-hover:text-slate-400'
+                    className: activeTool === item.tool ? `text-${item.color}-500 dark:text-${item.color}-400` : 'text-slate-400 dark:text-slate-600 group-hover:text-slate-600 dark:group-hover:text-slate-400'
                   })}
                 </div>
                 {isSidebarHovered && (
@@ -429,13 +486,43 @@ const App: React.FC = () => {
             ))}
           </nav>
 
-          <div className="mt-auto px-4 w-full">
+          <div className="mt-auto px-4 w-full space-y-2">
+            <button
+              onClick={toggleTheme}
+              className={`w-full group flex items-center transition-all duration-300 rounded-2xl p-4 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 ${isSidebarHovered ? 'space-x-4' : 'justify-center'}`}
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            >
+              {theme === 'dark' ? (
+                <Sun size={20} className="text-yellow-400 group-hover:text-yellow-300" />
+              ) : (
+                <Moon size={20} className="text-slate-400 group-hover:text-slate-600" />
+              )}
+              {isSidebarHovered && (
+                <span className="text-xs font-bold uppercase tracking-widest whitespace-nowrap animate-in fade-in slide-in-from-left duration-300">
+                  {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTool(AppTool.DOCS)}
+              className={`w-full group flex items-center transition-all duration-300 rounded-2xl p-4 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 ${isSidebarHovered ? 'space-x-4' : 'justify-center'}`}
+              title="Documentation"
+            >
+              <BookOpen size={20} className="text-slate-400 dark:text-slate-600 group-hover:text-orange-500 dark:group-hover:text-orange-400" />
+              {isSidebarHovered && (
+                <span className="text-xs font-bold uppercase tracking-widest whitespace-nowrap animate-in fade-in slide-in-from-left duration-300">
+                  Docs
+                </span>
+              )}
+            </button>
+
             <button
               onClick={() => setActiveTool(AppTool.SETTINGS)}
-              className={`w-full group flex items-center transition-all duration-300 rounded-2xl p-4 text-slate-500 hover:bg-slate-900/50 hover:text-slate-200 ${isSidebarHovered ? 'space-x-4' : 'justify-center'}`}
+              className={`w-full group flex items-center transition-all duration-300 rounded-2xl p-4 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 ${isSidebarHovered ? 'space-x-4' : 'justify-center'}`}
               title="Settings"
             >
-              <SettingsIcon size={20} className="text-slate-600 group-hover:text-slate-400" />
+              <SettingsIcon size={20} className="text-slate-400 dark:text-slate-600 group-hover:text-slate-600 dark:group-hover:text-slate-400" />
               {isSidebarHovered && (
                 <span className="text-xs font-bold uppercase tracking-widest whitespace-nowrap animate-in fade-in slide-in-from-left duration-300">
                   Settings
@@ -448,19 +535,42 @@ const App: React.FC = () => {
 
       <main className="flex-1 flex flex-col min-w-0 h-screen">
         {activeTool === AppTool.LANDING && (
-          <nav className="border-b border-slate-800 bg-[#020617]/80 backdrop-blur-md sticky top-0 z-50 px-8 h-20 flex items-center justify-between shrink-0">
+          <nav className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-md sticky top-0 z-50 px-8 h-20 flex items-center justify-between shrink-0">
             <div onClick={() => setActiveTool(AppTool.LANDING)} className="flex items-center space-x-4 cursor-pointer">
               <img src={LOGO_SRC} className="w-10 h-10 object-contain" />
-              <span className="font-black text-2xl tracking-tighter italic">WEED <span className="text-green-500">LABS</span></span>
+              <span className="font-black text-2xl tracking-tighter italic text-slate-900 dark:text-white">WEED <span className="text-green-500">LABS</span></span>
             </div>
 
-            <button
-              onClick={() => setActiveTool(AppTool.SETTINGS)}
-              className="p-3 rounded-2xl bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-white transition-all border border-slate-700/50 flex items-center space-x-3"
-            >
-              <SettingsIcon size={20} />
-              <span className="text-xs font-bold uppercase tracking-widest hidden sm:inline">Settings</span>
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setActiveTool(AppTool.DOCS)}
+                className="p-3 rounded-2xl bg-white/50 hover:bg-white dark:bg-slate-800/50 dark:hover:bg-slate-800 text-slate-500 hover:text-orange-500 dark:text-slate-400 dark:hover:text-orange-400 transition-all border border-slate-200 dark:border-slate-700/50 flex items-center space-x-2"
+                title="Documentation & Guides"
+              >
+                <BookOpen size={20} />
+                <span className="text-xs font-bold uppercase tracking-widest hidden sm:inline">Docs</span>
+              </button>
+
+              <button
+                onClick={toggleTheme}
+                className="p-3 rounded-2xl bg-white/50 hover:bg-white dark:bg-slate-800/50 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all border border-slate-200 dark:border-slate-700/50"
+                title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+              >
+                {theme === 'dark' ? (
+                  <Sun size={20} className="text-yellow-400" />
+                ) : (
+                  <Moon size={20} className="text-slate-600" />
+                )}
+              </button>
+
+              <button
+                onClick={() => setActiveTool(AppTool.SETTINGS)}
+                className="p-3 rounded-2xl bg-slate-100/50 hover:bg-slate-200 dark:bg-slate-800/50 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all border border-slate-200 dark:border-slate-700/50 flex items-center space-x-3"
+              >
+                <SettingsIcon size={20} />
+                <span className="text-xs font-bold uppercase tracking-widest hidden sm:inline">Settings</span>
+              </button>
+            </div>
           </nav>
         )}
 
@@ -490,13 +600,50 @@ const App: React.FC = () => {
   );
 };
 
-const ToolCard = ({ icon, title, desc, onClick, accent }: any) => (
-  <div onClick={onClick} className="p-6 rounded-2xl border border-slate-800 bg-slate-900/50 cursor-pointer hover:border-slate-700 transition-all group">
-    <div className="mb-4 p-3 rounded-xl bg-slate-800/50 w-fit group-hover:scale-110 transition-transform">{icon}</div>
-    <h3 className="text-lg font-bold mb-2">{title}</h3>
-    <p className="text-slate-400 text-sm mb-4">{desc}</p>
-    <div className="flex items-center text-xs font-bold text-blue-500">ENTER CHAMBER <ChevronRight size={14} /></div>
-  </div>
-);
+// Helper for safety with Tailwind compiler
+const getAccentClasses = (accent: string) => {
+  const map: Record<string, { light: string, dark: string, icon: string, border: string }> = {
+    blue: { light: 'hover:shadow-blue-500/20', dark: 'dark:hover:border-blue-500/50', icon: 'text-blue-500', border: 'border-blue-500/10' },
+    pink: { light: 'hover:shadow-pink-500/20', dark: 'dark:hover:border-pink-500/50', icon: 'text-pink-500', border: 'border-pink-500/10' },
+    green: { light: 'hover:shadow-green-500/20', dark: 'dark:hover:border-green-500/50', icon: 'text-green-500', border: 'border-green-500/10' },
+    cyan: { light: 'hover:shadow-cyan-500/20', dark: 'dark:hover:border-cyan-500/50', icon: 'text-cyan-500', border: 'border-cyan-500/10' },
+    indigo: { light: 'hover:shadow-indigo-500/20', dark: 'dark:hover:border-indigo-500/50', icon: 'text-indigo-500', border: 'border-indigo-500/10' },
+    purple: { light: 'hover:shadow-purple-500/20', dark: 'dark:hover:border-purple-500/50', icon: 'text-purple-500', border: 'border-purple-500/10' },
+    orange: { light: 'hover:shadow-orange-500/20', dark: 'dark:hover:border-orange-500/50', icon: 'text-orange-500', border: 'border-orange-500/10' },
+  };
+  return map[accent] || map.blue;
+};
+
+const ToolCard = ({ icon, title, desc, onClick, accent }: any) => {
+  const styles = getAccentClasses(accent);
+
+  return (
+    <div onClick={onClick} className={`
+      relative overflow-hidden group p-8 rounded-[2rem] cursor-pointer transition-all duration-500
+      border
+      /* Light Mode: Liquid Glass */
+      bg-white/60 backdrop-blur-2xl border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]
+      hover:bg-white/80 hover:scale-[1.02] ${styles.light} hover:shadow-2xl
+      /* Dark Mode: Cyber-Botanical */
+      dark:bg-slate-900/40 dark:border-slate-800 dark:shadow-none
+      ${styles.dark} dark:hover:bg-slate-900/60
+    `}>
+      {/* Light Mode Ambient Glow */}
+      <div className={`absolute -right-20 -top-20 w-60 h-60 bg-gradient-to-br from-${accent}-500/10 to-transparent blur-[60px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none dark:hidden`} />
+
+      <div className={`mb-6 p-4 rounded-2xl w-fit transition-all duration-500
+        bg-slate-50 dark:bg-slate-800/50 group-hover:scale-110 group-hover:bg-white dark:group-hover:bg-slate-800 shadow-sm dark:shadow-none`}>
+        {React.cloneElement(icon, { className: `w-8 h-8 ${styles.icon} transition-colors` })}
+      </div>
+
+      <h3 className="text-2xl font-black mb-3 text-slate-900 dark:text-white tracking-tight">{title}</h3>
+      <p className="text-slate-500 dark:text-slate-400 text-sm font-medium leading-relaxed mb-8">{desc}</p>
+
+      <div className={`flex items-center text-xs font-black tracking-[0.2em] uppercase ${styles.icon} group-hover:translate-x-2 transition-transform duration-300`}>
+        ENTER CHAMBER <ChevronRight size={14} className="ml-1" />
+      </div>
+    </div>
+  );
+};
 
 export default App;

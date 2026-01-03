@@ -86,7 +86,10 @@ const CarouselGenerator: React.FC<CarouselGeneratorProps> = ({ references, brand
                     brief,
                     'strict',
                     selectedBrand?.dna,
-                    selectedCharacter?.dna
+                    selectedCharacter?.dna,
+                    'flash',
+                    'auto',
+                    selectedRef.imageSource
                 );
 
                 if (finalVisualPrompt) {
@@ -120,7 +123,9 @@ const CarouselGenerator: React.FC<CarouselGeneratorProps> = ({ references, brand
             brief,
             'strict',
             selectedBrand?.dna,
-            selectedCharacter?.dna
+            selectedCharacter?.dna,
+            'auto',
+            selectedRef.imageSource
         );
         setPromptPreview(data);
     };
@@ -143,7 +148,7 @@ const CarouselGenerator: React.FC<CarouselGeneratorProps> = ({ references, brand
         <div className="max-w-7xl mx-auto px-6 py-12 animate-in fade-in duration-500">
             <div className="flex items-center justify-between mb-12">
                 <div className="flex items-center space-x-6">
-                    <button onClick={onBack} className="p-4 rounded-2xl bg-slate-800/50 text-slate-400 hover:text-white transition-all">
+                    <button onClick={onBack} className="p-4 rounded-2xl bg-white/50 dark:bg-slate-800/50 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all shadow-sm">
                         <ArrowLeft size={24} />
                     </button>
                     <div>
@@ -158,12 +163,12 @@ const CarouselGenerator: React.FC<CarouselGeneratorProps> = ({ references, brand
                 </div>
 
                 <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2 bg-slate-800/40 p-1.5 rounded-2xl border border-slate-700/30">
-                        <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value as AspectRatio)} className="bg-transparent border-none text-[10px] font-bold uppercase tracking-widest text-slate-500 outline-none cursor-pointer px-4 hover:text-slate-300">
-                            <option value="4:3" className="bg-slate-900">4:3 Carousel</option>
-                            <option value="3:4" className="bg-slate-900">3:4 Portrait</option>
-                            <option value="1:1" className="bg-slate-900">1:1 Square</option>
-                            <option value="9:16" className="bg-slate-900">9:16 Story</option>
+                    <div className="flex items-center space-x-2 bg-white dark:bg-slate-800/40 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700/30">
+                        <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value as AspectRatio)} className="bg-transparent border-none text-[10px] font-bold uppercase tracking-widest text-slate-500 outline-none cursor-pointer px-4 hover:text-slate-900 dark:hover:text-slate-300">
+                            <option value="4:3" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">4:3 Carousel</option>
+                            <option value="3:4" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">3:4 Portrait</option>
+                            <option value="1:1" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">1:1 Square</option>
+                            <option value="9:16" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">9:16 Story</option>
                         </select>
                     </div>
                     <button
@@ -179,7 +184,7 @@ const CarouselGenerator: React.FC<CarouselGeneratorProps> = ({ references, brand
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-[calc(100vh-140px)]">
                 {/* LEFT COLUMN: CONFIGURATION & EDITOR (Merged) */}
-                <div className="lg:col-span-4 flex flex-col h-full bg-slate-900/40 border border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl">
+                <div className="lg:col-span-4 flex flex-col h-full bg-white/80 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl backdrop-blur-xl">
                     <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
                         {/* 1. SETUP SECTION */}
                         <div className="space-y-4">
@@ -195,23 +200,23 @@ const CarouselGenerator: React.FC<CarouselGeneratorProps> = ({ references, brand
                                 value={carouselName}
                                 onChange={(e) => setCarouselName(e.target.value)}
                                 placeholder="Carousel Name..."
-                                className="w-full px-5 py-3 bg-slate-950/50 border border-slate-700/50 rounded-xl text-sm focus:ring-1 focus:ring-blue-500/50 outline-none font-bold"
+                                className="w-full px-5 py-3 bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-slate-700/50 rounded-xl text-sm focus:ring-1 focus:ring-blue-500/50 outline-none font-bold text-slate-900 dark:text-white"
                             />
 
-                            <select className="w-full px-5 py-3 bg-slate-950/50 border border-slate-700/50 rounded-xl text-sm outline-none focus:ring-1 focus:ring-blue-500/50" value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
-                                <option value="" className="bg-slate-900">Select Universal Blueprint...</option>
-                                {references.map(r => <option key={r.id} value={r.id} className="bg-slate-900">{r.name}</option>)}
+                            <select className="w-full px-5 py-3 bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-slate-700/50 rounded-xl text-sm outline-none focus:ring-1 focus:ring-blue-500/50 text-slate-900 dark:text-white" value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
+                                <option value="" className="bg-white dark:bg-slate-900">Select Universal Blueprint...</option>
+                                {references.map(r => <option key={r.id} value={r.id} className="bg-white dark:bg-slate-900">{r.name}</option>)}
                             </select>
 
-                            <select className="w-full px-5 py-3 bg-slate-950/50 border border-slate-700/50 rounded-xl text-sm outline-none focus:ring-1 focus:ring-blue-500/50" value={selectedBrandId} onChange={(e) => setSelectedBrandId(e.target.value)}>
-                                <option value="" className="bg-slate-900">Attach Brand Identity (Optional)...</option>
-                                {brands.map(b => <option key={b.id} value={b.id} className="bg-slate-900">{b.name}</option>)}
+                            <select className="w-full px-5 py-3 bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-slate-700/50 rounded-xl text-sm outline-none focus:ring-1 focus:ring-blue-500/50 text-slate-900 dark:text-white" value={selectedBrandId} onChange={(e) => setSelectedBrandId(e.target.value)}>
+                                <option value="" className="bg-white dark:bg-slate-900">Attach Brand Identity (Optional)...</option>
+                                {brands.map(b => <option key={b.id} value={b.id} className="bg-white dark:bg-slate-900">{b.name}</option>)}
                             </select>
 
                             {selectedRef?.jsonSpec.structural_rules.has_character_slot && (
-                                <select className="w-full px-5 py-3 bg-slate-950/50 text-green-400 border border-green-500/30 rounded-xl text-sm outline-none focus:ring-1 focus:ring-green-500/50 font-bold" value={selectedCharacterId} onChange={(e) => setSelectedCharacterId(e.target.value)}>
-                                    <option value="" className="bg-slate-900">Inject Character DNA...</option>
-                                    {characters.map(c => <option key={c.id} value={c.id} className="bg-slate-900 text-slate-100">{c.name}</option>)}
+                                <select className="w-full px-5 py-3 bg-white dark:bg-slate-950/50 text-green-600 dark:text-green-400 border border-green-500/30 rounded-xl text-sm outline-none focus:ring-1 focus:ring-green-500/50 font-bold" value={selectedCharacterId} onChange={(e) => setSelectedCharacterId(e.target.value)}>
+                                    <option value="" className="bg-white dark:bg-slate-900">Inject Character DNA...</option>
+                                    {characters.map(c => <option key={c.id} value={c.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">{c.name}</option>)}
                                 </select>
                             )}
                         </div>
@@ -225,12 +230,12 @@ const CarouselGenerator: React.FC<CarouselGeneratorProps> = ({ references, brand
                                     <div className="p-2 rounded-lg bg-orange-500/10 border border-orange-500/20">
                                         <Wand2 size={18} className="text-orange-400" />
                                     </div>
-                                    <h3 className="text-sm font-bold text-slate-200">Slide {activeSlideIndex + 1} Editor</h3>
+                                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-200">Slide {activeSlideIndex + 1} Editor</h3>
                                 </div>
                                 <button
                                     onClick={handlePreviewPrompt}
                                     disabled={!selectedId}
-                                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-500/10 hover:text-indigo-400 transition-all text-slate-400 border border-slate-700 hover:border-indigo-500/30"
+                                    className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-indigo-500/30"
                                     title="View Neural Prompt"
                                 >
                                     <Eye size={16} />
@@ -243,7 +248,7 @@ const CarouselGenerator: React.FC<CarouselGeneratorProps> = ({ references, brand
                                     value={slides[activeSlideIndex].copyBrief}
                                     onChange={(e) => updateSlide(activeSlideIndex, { copyBrief: e.target.value })}
                                     placeholder="What is the main text on this slide?"
-                                    className="w-full h-40 px-5 py-4 bg-slate-950 border border-slate-800 rounded-2xl text-sm focus:ring-2 focus:ring-orange-500/30 outline-none resize-none leading-relaxed"
+                                    className="w-full h-40 px-5 py-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:ring-2 focus:ring-orange-500/30 outline-none resize-none leading-relaxed text-slate-900 dark:text-white"
                                 />
                             </div>
                         </div>
@@ -269,13 +274,13 @@ const CarouselGenerator: React.FC<CarouselGeneratorProps> = ({ references, brand
                                     <div
                                         key={slide.id}
                                         onClick={() => setActiveSlideIndex(idx)}
-                                        className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${activeSlideIndex === idx ? 'bg-blue-500/10 border-blue-500/50' : 'bg-slate-950/30 border-slate-800/50 hover:border-slate-700'}`}
+                                        className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between group ${activeSlideIndex === idx ? 'bg-blue-500/10 border-blue-500/50' : 'bg-white dark:bg-slate-950/30 border-slate-200 dark:border-slate-800/50 hover:border-slate-400 dark:hover:border-slate-700'}`}
                                     >
                                         <div className="flex items-center space-x-3">
-                                            <span className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold ${activeSlideIndex === idx ? 'bg-blue-500 text-white shadow-lg' : 'bg-slate-800 text-slate-500'}`}>
+                                            <span className={`w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold ${activeSlideIndex === idx ? 'bg-blue-500 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
                                                 {slide.slideNumber}
                                             </span>
-                                            <div className="max-w-[120px] truncate leading-tight text-[10px] font-medium text-slate-400">
+                                            <div className="max-w-[120px] truncate leading-tight text-[10px] font-medium text-slate-500 dark:text-slate-400">
                                                 {slide.copyBrief || 'Empty Slide Content'}
                                             </div>
                                         </div>
@@ -292,7 +297,7 @@ const CarouselGenerator: React.FC<CarouselGeneratorProps> = ({ references, brand
                     </div>
 
                     {/* FIXED BOTTOM ACTION */}
-                    <div className="p-6 border-t border-slate-800 bg-slate-900/80 backdrop-blur-sm z-10">
+                    <div className="p-6 border-t border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-10">
                         <button
                             onClick={handleGenerateAll}
                             disabled={isGenerating || !selectedId}
@@ -319,7 +324,7 @@ const CarouselGenerator: React.FC<CarouselGeneratorProps> = ({ references, brand
                 {/* RIGHT COLUMN: PREVIEW & FILMSTRIP (Expanded) */}
                 <div className="lg:col-span-8 flex flex-col h-full space-y-6">
                     {/* MAIN PREVIEW */}
-                    <div className={`relative w-full rounded-[2.5rem] overflow-hidden bg-black border border-slate-800 shadow-2xl flex items-center justify-center group transition-all duration-500 flex-1 ${aspectRatio === '1:1' ? 'max-w-[65vh] mx-auto aspect-square' : aspectRatio === '9:16' ? 'max-w-[45vh] mx-auto aspect-[9/16]' : aspectRatio === '3:4' ? 'max-w-[55vh] mx-auto aspect-[3/4]' : 'w-full aspect-[4/3]'}`}>
+                    <div className={`relative w-full rounded-[2.5rem] overflow-hidden bg-slate-100 dark:bg-black border border-slate-200 dark:border-slate-800 shadow-2xl flex items-center justify-center group transition-all duration-500 flex-1 ${aspectRatio === '1:1' ? 'max-w-[65vh] mx-auto aspect-square' : aspectRatio === '9:16' ? 'max-w-[45vh] mx-auto aspect-[9/16]' : aspectRatio === '3:4' ? 'max-w-[55vh] mx-auto aspect-[3/4]' : 'w-full aspect-[4/3]'}`}>
                         {slides[activeSlideIndex].generatedImage ? (
                             <img src={slides[activeSlideIndex].generatedImage} className="w-full h-full object-contain animate-in fade-in zoom-in-95 duration-500" alt="Preview" />
                         ) : (
@@ -346,7 +351,7 @@ const CarouselGenerator: React.FC<CarouselGeneratorProps> = ({ references, brand
                     </div>
 
                     {/* FILMSTRIP (Compact) */}
-                    <div className="h-32 p-4 rounded-[2rem] bg-slate-900/40 border border-slate-800 flex flex-col justify-center space-y-2 shadow-xl">
+                    <div className="h-32 p-4 rounded-[2rem] bg-white/50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 flex flex-col justify-center space-y-2 shadow-xl backdrop-blur-sm">
                         <div className="flex items-center justify-between px-2">
                             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Deck Sequence</p>
                             <span className="text-[9px] font-bold text-blue-500">{activeSlideIndex + 1} / {slides.length}</span>
@@ -361,8 +366,8 @@ const CarouselGenerator: React.FC<CarouselGeneratorProps> = ({ references, brand
                                     {slide.generatedImage ? (
                                         <img src={slide.generatedImage} className="w-full h-full object-cover" />
                                     ) : (
-                                        <div className="w-full h-full bg-slate-950 flex items-center justify-center">
-                                            <span className="text-[10px] font-bold text-slate-700">{i + 1}</span>
+                                        <div className="w-full h-full bg-slate-100 dark:bg-slate-950 flex items-center justify-center">
+                                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-700">{i + 1}</span>
                                         </div>
                                     )}
                                     {activeSlideIndex === i && <div className="absolute inset-0 ring-1 ring-blue-500 rounded-xl" />}
@@ -370,7 +375,7 @@ const CarouselGenerator: React.FC<CarouselGeneratorProps> = ({ references, brand
                             ))}
                             <button
                                 onClick={addSlide}
-                                className="flex-shrink-0 h-16 w-16 rounded-xl border-2 border-dashed border-slate-800 hover:border-slate-600 hover:bg-slate-800/30 flex items-center justify-center transition-all text-slate-600 hover:text-slate-400"
+                                className="flex-shrink-0 h-16 w-16 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800/30 flex items-center justify-center transition-all text-slate-400 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400"
                             >
                                 <Plus size={18} />
                             </button>

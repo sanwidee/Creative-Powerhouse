@@ -170,9 +170,9 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
     ];
 
     return (
-        <div className="min-h-screen bg-[#020617] text-slate-100 p-6">
+        <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-slate-100 p-6 transition-colors duration-500">
             <div className="max-w-5xl mx-auto">
-                <button onClick={onBack} className="mb-6 flex items-center space-x-2 text-slate-400 hover:text-white transition-colors">
+                <button onClick={onBack} className="mb-6 flex items-center space-x-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">
                     <ArrowLeft size={20} />
                     <span className="font-semibold">Back to Lab</span>
                 </button>
@@ -180,29 +180,29 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
                 <div className="mb-8">
                     <div className="flex items-center space-x-3 mb-2">
                         <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20">
-                            <Users size={28} className="text-green-400" />
+                            <Users size={28} className="text-green-500 dark:text-green-400" />
                         </div>
-                        <h1 className="text-4xl font-bold italic tracking-tighter">Character Lab <span className="text-green-500 text-lg not-italic align-top ml-2">V2</span></h1>
+                        <h1 className="text-4xl font-bold italic tracking-tighter text-slate-900 dark:text-white">Character Lab <span className="text-green-500 text-lg not-italic align-top ml-2">V2</span></h1>
                     </div>
-                    <p className="text-slate-400 text-sm">Identity Lock & Style Remixing enabled</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">Identity Lock & Style Remixing enabled</p>
                 </div>
 
                 {/* Style Selector & Upload Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                     <div className="lg:col-span-2 space-y-6">
                         {/* 1. Base Selection */}
-                        <div className="p-6 rounded-2xl border border-slate-800 bg-slate-900/50">
-                            <h2 className="text-xl font-bold mb-4 flex items-center space-x-2">
-                                <History size={20} className="text-green-400" />
+                        <div className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/50 shadow-sm">
+                            <h2 className="text-xl font-bold mb-4 flex items-center space-x-2 text-slate-900 dark:text-white">
+                                <History size={20} className="text-green-500 dark:text-green-400" />
                                 <span>1. Select Base Character</span>
                             </h2>
-                            <p className="text-slate-400 text-xs mb-4 uppercase tracking-wider font-bold">Choose an existing DNA or upload new references</p>
+                            <p className="text-slate-500 dark:text-slate-400 text-xs mb-4 uppercase tracking-wider font-bold">Choose an existing DNA or upload new references</p>
 
                             <div className="space-y-4">
                                 <select
                                     value={selectedCharacterId}
                                     onChange={(e) => setSelectedCharacterId(e.target.value)}
-                                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500/50 text-sm font-semibold mb-4"
+                                    className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500/50 text-sm font-semibold mb-4 text-slate-900 dark:text-white"
                                 >
                                     <option value="">-- Start New Extraction --</option>
                                     {characters.map(char => (
@@ -224,7 +224,7 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
                                         <button
                                             onClick={() => fileInputRef.current?.click()}
                                             disabled={uploadedImages.length >= 10}
-                                            className="w-full py-4 border-2 border-dashed border-slate-700 hover:border-green-500/50 hover:bg-green-500/5 text-slate-400 hover:text-green-400 rounded-xl font-bold transition-all flex flex-col items-center justify-center space-y-2"
+                                            className="w-full py-4 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-green-500/50 hover:bg-green-500/5 text-slate-400 dark:text-slate-400 hover:text-green-500 dark:hover:text-green-400 rounded-xl font-bold transition-all flex flex-col items-center justify-center space-y-2 bg-slate-50 dark:bg-transparent"
                                         >
                                             <Upload size={24} />
                                             <span>{uploadedImages.length >= 10 ? 'Maximum 10 images' : `Select Images (${uploadedImages.length}/10)`}</span>
@@ -251,12 +251,12 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
 
                                 {selectedCharacterId && (
                                     <div className="p-4 rounded-xl bg-green-500/5 border border-green-500/20 flex items-center space-x-4">
-                                        <div className="w-16 h-16 rounded-lg bg-slate-800 overflow-hidden shrink-0 border border-slate-700">
+                                        <div className="w-16 h-16 rounded-lg bg-slate-200 dark:bg-slate-800 overflow-hidden shrink-0 border border-slate-300 dark:border-slate-700">
                                             <img src={uploadedImages[0]} alt="Base" className="w-full h-full object-cover" />
                                         </div>
                                         <div>
-                                            <h3 className="text-sm font-bold text-green-400">DNA Loaded</h3>
-                                            <p className="text-xs text-slate-400">{uploadedImages.length} references connected</p>
+                                            <h3 className="text-sm font-bold text-green-600 dark:text-green-400">DNA Loaded</h3>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400">{uploadedImages.length} references connected</p>
                                         </div>
                                         <button
                                             onClick={() => setSelectedCharacterId('')}
@@ -272,12 +272,12 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
 
                     {/* Art Style Selection */}
                     <div className="space-y-6">
-                        <div className="p-6 rounded-2xl border border-slate-800 bg-slate-900/50 h-full">
-                            <h2 className="text-xl font-bold mb-4 flex items-center space-x-2">
-                                <Sparkles size={20} className="text-green-400" />
+                        <div className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/50 h-full shadow-sm">
+                            <h2 className="text-xl font-bold mb-4 flex items-center space-x-2 text-slate-900 dark:text-white">
+                                <Sparkles size={20} className="text-green-500 dark:text-green-400" />
                                 <span>2. Target Art Style</span>
                             </h2>
-                            <p className="text-slate-400 text-xs mb-4 uppercase tracking-wider font-bold">Identity will be locked to original</p>
+                            <p className="text-slate-500 dark:text-slate-400 text-xs mb-4 uppercase tracking-wider font-bold">Identity will be locked to original</p>
 
                             <div className="grid grid-cols-1 gap-2">
                                 {artStyles.map(style => (
@@ -289,8 +289,8 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
                                             // To keep UI responsive
                                         }}
                                         className={`flex items-center space-x-3 p-3 rounded-xl border transition-all text-left ${selectedStyle === style.id
-                                            ? 'bg-green-500/20 border-green-500 text-white'
-                                            : 'bg-slate-800/50 border-slate-700 text-slate-400 hover:border-slate-500'
+                                            ? 'bg-green-500/20 border-green-500 text-green-700 dark:text-white'
+                                            : 'bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500'
                                             }`}
                                     >
                                         <span className="text-2xl">{style.icon}</span>
@@ -313,7 +313,7 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
                     <button
                         onClick={() => handleAnalyze()}
                         disabled={isAnalyzing}
-                        className="w-full py-6 bg-green-600 hover:bg-green-500 disabled:bg-slate-800 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-green-500/10 flex items-center justify-center space-x-3 mb-8"
+                        className="w-full py-6 bg-green-600 hover:bg-green-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-green-500/10 flex items-center justify-center space-x-3 mb-8"
                     >
                         {isAnalyzing ? (
                             <>
@@ -339,19 +339,19 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
                         <div className="p-8 rounded-3xl border border-green-500/20 bg-green-500/5 backdrop-blur-sm">
                             <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
                                 <div className="flex items-center space-x-3">
-                                    <CheckCircle2 size={28} className="text-green-400" />
+                                    <CheckCircle2 size={28} className="text-green-500 dark:text-green-400" />
                                     <div>
-                                        <h2 className="text-2xl font-black uppercase tracking-tighter">DNA Sequence Loaded</h2>
-                                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest flex items-center">
-                                            <span className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-[10px] mr-2">IDENTITY LOCKED</span>
-                                            Active Style: <span className="text-white ml-2">{artStyles.find(s => s.id === selectedStyle)?.label}</span>
+                                        <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">DNA Sequence Loaded</h2>
+                                        <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest flex items-center">
+                                            <span className="bg-green-500/20 text-green-600 dark:text-green-400 px-2 py-0.5 rounded text-[10px] mr-2">IDENTITY LOCKED</span>
+                                            Active Style: <span className="text-slate-900 dark:text-white ml-2">{artStyles.find(s => s.id === selectedStyle)?.label}</span>
                                         </p>
                                     </div>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <button
                                         onClick={handlePreviewTurnaroundPrompt}
-                                        className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition-all border border-slate-700 flex items-center space-x-2"
+                                        className="px-4 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-lg text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 flex items-center space-x-2 text-nowrap"
                                     >
                                         <Eye size={14} />
                                         <span>View Prompt</span>
@@ -359,7 +359,7 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
                                     <button
                                         onClick={() => handleAnalyze()}
                                         disabled={isAnalyzing}
-                                        className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition-all border border-slate-700 flex items-center space-x-2"
+                                        className="px-4 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 rounded-lg text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 flex items-center space-x-2 text-nowrap"
                                     >
                                         <Sparkles size={14} />
                                         <span>Regenerate Turnaround</span>
@@ -382,12 +382,12 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
 
                                     {/* Link to Brand DNA */}
                                     {brands.length > 0 && (
-                                        <div className="p-6 rounded-2xl bg-slate-800/50 border border-slate-700">
-                                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Brand DNA Association</label>
+                                        <div className="p-6 rounded-2xl bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Brand DNA Association</label>
                                             <select
                                                 value={dna.linked_brand_id || ''}
                                                 onChange={(e) => updateDnaField('linked_brand_id', e.target.value || undefined)}
-                                                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500/50 text-sm"
+                                                className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500/50 text-sm text-slate-900 dark:text-white"
                                             >
                                                 <option value="">No brand link</option>
                                                 {brands.map(brand => (
@@ -403,47 +403,47 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
                                 <div className="space-y-6">
                                     <div className="grid grid-cols-1 gap-4">
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Signature Identity Name</label>
+                                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Signature Identity Name</label>
                                             <input
                                                 type="text"
                                                 value={characterName}
                                                 onChange={(e) => setCharacterName(e.target.value)}
-                                                className="w-full px-4 py-4 bg-slate-900 border border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500/50 text-lg font-bold"
+                                                className="w-full px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500/50 text-lg font-bold text-slate-900 dark:text-white"
                                                 placeholder="Enter character name..."
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Body & Anatomy Specs</label>
+                                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Body & Anatomy Specs</label>
                                             <textarea
                                                 value={dna.physical_features}
                                                 onChange={(e) => updateDnaField('physical_features', e.target.value)}
-                                                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500/50 min-h-[100px] text-sm"
+                                                className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500/50 min-h-[100px] text-sm text-slate-900 dark:text-white"
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Visual & Facial Details</label>
+                                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Visual & Facial Details</label>
                                             <textarea
                                                 value={dna.visual_details}
                                                 onChange={(e) => updateDnaField('visual_details', e.target.value)}
-                                                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500/50 min-h-[100px] text-sm"
+                                                className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500/50 min-h-[100px] text-sm text-slate-900 dark:text-white"
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center justify-between">
+                                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 flex items-center justify-between">
                                                 <span>Color Palette Syntax</span>
                                                 <button
                                                     onClick={() => updateDnaField('color_palette', [...dna.color_palette, '#000000'])}
-                                                    className="text-green-400 hover:text-green-300 normal-case tracking-normal"
+                                                    className="text-green-600 dark:text-green-400 hover:text-green-500 normal-case tracking-normal"
                                                 >
                                                     + Add Color
                                                 </button>
                                             </label>
-                                            <div className="flex flex-wrap gap-2 p-3 bg-slate-900 border border-slate-700 rounded-xl">
+                                            <div className="flex flex-wrap gap-2 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl">
                                                 {dna.color_palette.map((color, idx) => (
-                                                    <div key={idx} className="flex items-center space-x-2 bg-slate-800 p-1.5 rounded-lg border border-slate-700">
+                                                    <div key={idx} className="flex items-center space-x-2 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                                                         <div className="w-5 h-5 rounded border border-white/10 shrink-0" style={{ backgroundColor: color }} />
                                                         <input
                                                             type="text"

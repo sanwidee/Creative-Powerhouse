@@ -76,7 +76,8 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
         selectedBrand?.dna,
         selectedCharacter?.dna,
         modelType,
-        themeMode
+        themeMode,
+        selectedRef.imageSource
       );
       setResultText(report);
 
@@ -162,14 +163,14 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8 animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto px-6 py-8 animate-in fade-in duration-500 text-slate-900 dark:text-slate-100">
       <div className="flex items-center space-x-4 mb-8">
-        <button onClick={onBack} className="p-3 rounded-xl bg-slate-800/50 text-slate-400 hover:text-white transition-all active:scale-95 flex items-center justify-center">
+        <button onClick={onBack} className="p-3 rounded-xl bg-white/50 dark:bg-slate-800/50 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all active:scale-95 flex items-center justify-center shadow-sm">
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Post Generator</h2>
-          <p className="text-slate-400">Deploy content into design systems.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Post Generator</h2>
+          <p className="text-slate-500 dark:text-slate-400">Deploy content into design systems.</p>
         </div>
       </div>
 
@@ -178,10 +179,10 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
           {/* 1. SELECT COMPONENTS */}
-          <div className="p-8 rounded-[2.5rem] border border-slate-800 bg-slate-900/40 shadow-2xl space-y-6">
+          <div className="p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/40 shadow-xl dark:shadow-2xl backdrop-blur-xl space-y-6">
             <div className="flex items-center space-x-3 mb-2">
               <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                <LayoutTemplate size={18} className="text-blue-400" />
+                <LayoutTemplate size={18} className="text-blue-500 dark:text-blue-400" />
               </div>
               <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">1. Select Components</label>
             </div>
@@ -246,7 +247,7 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
                       <div
                         key={c.id}
                         onClick={() => setSelectedCharacterId(c.id)}
-                        className={`shrink-0 w-16 h-16 rounded-2xl border-2 transition-all cursor-pointer overflow-hidden bg-black ${selectedCharacterId === c.id ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)]' : 'border-slate-800 hover:border-slate-700'}`}
+                        className={`shrink-0 w-16 h-16 rounded-2xl border-2 transition-all cursor-pointer overflow-hidden bg-black ${selectedCharacterId === c.id ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)]' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}`}
                       >
                         <img src={c.dna.reference_images[0]} className="w-full h-full object-cover" />
                         {selectedCharacterId === c.id && (
@@ -263,22 +264,22 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
           </div>
 
           {/* 2. GENERATION MODE */}
-          <div className="p-8 rounded-[2.5rem] border border-slate-800 bg-slate-900/40 shadow-2xl flex flex-col">
+          <div className="p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/40 shadow-xl dark:shadow-2xl backdrop-blur-xl flex flex-col">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
                 <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
-                  <Zap size={18} className="text-indigo-400" />
+                  <Zap size={18} className="text-indigo-500 dark:text-indigo-400" />
                 </div>
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">2. Generation Mode</label>
               </div>
               <div className="flex space-x-2">
-                <button onClick={() => setCarouselMode(!carouselMode)} className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${carouselMode ? 'bg-indigo-500/10 border-indigo-500 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-400'}`}>
+                <button onClick={() => setCarouselMode(!carouselMode)} className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${carouselMode ? 'bg-indigo-500/10 border-indigo-500 text-indigo-500 dark:text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-900 dark:hover:text-slate-400'}`}>
                   <Layers size={12} />
-                  <span>CAROUSEL</span>
+                  <span>SEQUENCE</span>
                 </button>
-                <button onClick={() => setPrecisionMode(!precisionMode)} className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${precisionMode ? 'bg-blue-500/10 border-blue-500 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)]' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-400'}`}>
+                <button onClick={() => setPrecisionMode(!precisionMode)} className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${precisionMode ? 'bg-blue-500/10 border-blue-500 text-blue-500 dark:text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.2)]' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-900 dark:hover:text-slate-400'}`}>
                   <Target size={12} />
-                  <span>PRECISION</span>
+                  <span>SMART FILL</span>
                 </button>
               </div>
             </div>
@@ -296,7 +297,7 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
                         <input
                           type="text"
                           placeholder={field.placeholder}
-                          className="w-full px-4 py-2 bg-slate-900/50 border border-slate-700/50 rounded-xl text-xs focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                          className="w-full px-4 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/50 rounded-xl text-xs focus:ring-1 focus:ring-blue-500 outline-none transition-all text-slate-900 dark:text-white"
                           value={structuredData[field.id] || ''}
                           onChange={(e) => setStructuredData({ ...structuredData, [field.id]: e.target.value })}
                         />
@@ -317,7 +318,7 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
                     <textarea
                       placeholder="Describe specific elements, copy, or instructions..."
                       rows={6}
-                      className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none resize-none"
+                      className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500/30 outline-none resize-none text-slate-900 dark:text-white"
                       value={brief.elements_to_display}
                       onChange={(e) => setBrief({ ...brief, elements_to_display: e.target.value })}
                     />
@@ -327,7 +328,7 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
 
               {carouselMode && (
                 <div className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/10 flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Carousel Sequence</span>
+                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Sequence Order</span>
                   <div className="flex items-center space-x-2">
                     <input type="number" min="1" className="w-16 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs text-center" value={brief.slide_number} onChange={(e) => setBrief({ ...brief, slide_number: parseInt(e.target.value) })} />
                     <span className="text-slate-600">of</span>
@@ -337,59 +338,59 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
               )}
 
               {/* ACTION BAR RELOCATED HERE */}
-              <div className="pt-6 mt-auto border-t border-slate-800/50 space-y-4">
+              <div className="pt-6 mt-auto border-t border-slate-200 dark:border-slate-800/50 space-y-4">
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2 bg-slate-800/40 p-1 rounded-xl border border-slate-700/30">
+                    <div className="flex items-center space-x-2 bg-slate-100 dark:bg-slate-800/40 p-1 rounded-xl border border-slate-200 dark:border-slate-700/30">
                       <select value={brief.aspectRatio} onChange={(e) => setBrief({ ...brief, aspectRatio: e.target.value as AspectRatio })} className="bg-transparent border-none text-[10px] font-bold uppercase tracking-widest text-slate-500 outline-none cursor-pointer px-2">
-                        <option value="1:1" className="bg-slate-900">1:1 Square</option>
-                        <option value="4:3" className="bg-slate-900">4:3 Slide</option>
-                        <option value="3:4" className="bg-slate-900">3:4 Portrait</option>
-                        <option value="9:16" className="bg-slate-900">9:16 Story</option>
-                        <option value="16:9" className="bg-slate-900">16:9 Landscape</option>
+                        <option value="1:1" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">1:1 Square</option>
+                        <option value="4:3" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">4:3 Slide</option>
+                        <option value="3:4" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">3:4 Portrait</option>
+                        <option value="9:16" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">9:16 Story</option>
+                        <option value="16:9" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">16:9 Landscape</option>
                       </select>
-                      <div className="w-px h-3 bg-slate-700/50" />
+                      <div className="w-px h-3 bg-slate-300 dark:bg-slate-700/50" />
                       <select value={intensity} onChange={(e) => setIntensity(e.target.value as RemixIntensity)} className="bg-transparent border-none text-[10px] font-bold uppercase tracking-widest text-slate-500 outline-none cursor-pointer px-2">
-                        <option value="strict" className="bg-slate-900">Strict DNA</option>
-                        <option value="light" className="bg-slate-900">Light Touch</option>
-                        <option value="heavy" className="bg-slate-900">Creative Heavy</option>
+                        <option value="strict" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Strict DNA</option>
+                        <option value="light" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Light Touch</option>
+                        <option value="heavy" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Creative Heavy</option>
                       </select>
                     </div>
 
-                    <div className="flex items-center bg-slate-800/60 p-1 rounded-xl border border-slate-700/30">
+                    <div className="flex items-center bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl border border-slate-200 dark:border-slate-700/30">
                       <button
                         onClick={() => setThemeMode('light')}
-                        className={`p-1.5 rounded-lg transition-all ${themeMode === 'light' ? 'bg-white text-black shadow-lg' : 'text-slate-500 hover:text-white'}`}
+                        className={`p-1.5 rounded-lg transition-all ${themeMode === 'light' ? 'bg-white text-black shadow-lg' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
                         title="Force Light Theme"
                       >
                         <Sun size={14} />
                       </button>
                       <button
                         onClick={() => setThemeMode('dark')}
-                        className={`p-1.5 rounded-lg transition-all ${themeMode === 'dark' ? 'bg-slate-950 text-white shadow-lg border border-slate-700' : 'text-slate-500 hover:text-white'}`}
+                        className={`p-1.5 rounded-lg transition-all ${themeMode === 'dark' ? 'bg-slate-950 text-white shadow-lg border border-slate-700' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
                         title="Force Dark Theme"
                       >
                         <Moon size={14} />
                       </button>
                       <button
                         onClick={() => setThemeMode('auto')}
-                        className={`px-2 py-1.5 rounded-lg text-[9px] font-bold transition-all ${themeMode === 'auto' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-white'}`}
+                        className={`px-2 py-1.5 rounded-lg text-[9px] font-bold transition-all ${themeMode === 'auto' ? 'bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
                         title="Auto (Based on DNA)"
                       >
                         AUTO
                       </button>
                     </div>
 
-                    <div className="flex items-center bg-slate-800/60 p-1 rounded-xl border border-slate-700/30">
+                    <div className="flex items-center bg-slate-100 dark:bg-slate-800/60 p-1 rounded-xl border border-slate-200 dark:border-slate-700/30">
                       <button
                         onClick={() => setModelType('flash')}
-                        className={`px-3 py-1 rounded-lg text-[9px] font-bold transition-all ${modelType === 'flash' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`px-3 py-1 rounded-lg text-[9px] font-bold transition-all ${modelType === 'flash' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}
                       >
                         FLASH
                       </button>
                       <button
                         onClick={() => setModelType('pro')}
-                        className={`px-3 py-1 rounded-lg text-[9px] font-bold transition-all ${modelType === 'pro' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`px-3 py-1 rounded-lg text-[9px] font-bold transition-all ${modelType === 'pro' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}
                       >
                         PRO
                       </button>
@@ -401,7 +402,7 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
                   <button
                     onClick={handlePreviewPrompt}
                     disabled={!selectedId}
-                    className="py-4 rounded-2xl font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-all flex items-center justify-center space-x-2"
+                    className="py-4 rounded-2xl font-bold bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all flex items-center justify-center space-x-2"
                   >
                     <Eye size={18} />
                     <span>View Prompt</span>
@@ -417,16 +418,16 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
         </div>
 
         {/* BOTTOM SECTION: SYNTHESIS CHAMBER */}
-        <div className="p-10 rounded-[3rem] border border-slate-800 bg-slate-900/60 shadow-[0_0_50px_rgba(0,0,0,0.3)] space-y-8">
-          <div className="flex items-center justify-between border-b border-slate-800/50 pb-6">
+        <div className="p-10 rounded-[3rem] border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/60 shadow-[0_0_50px_rgba(0,0,0,0.05)] dark:shadow-[0_0_50px_rgba(0,0,0,0.3)] backdrop-blur-xl space-y-8">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800/50 pb-6">
             <div className="flex items-center space-x-4">
               <div className="p-3 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
-                <Rocket size={24} className="text-green-400" />
+                <Rocket size={24} className="text-green-500 dark:text-green-400" />
               </div>
               <div>
-                <h3 className="text-2xl font-bold tracking-tight text-white mb-1">The Synthesis Chamber</h3>
+                <h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-1">The Synthesis Chamber</h3>
                 <div className="flex items-center space-x-2">
-                  <div className={`w-1.5 h-1.5 rounded-full ${loading ? 'bg-indigo-500 animate-pulse' : 'bg-slate-600'}`} />
+                  <div className={`w-1.5 h-1.5 rounded-full ${loading ? 'bg-indigo-500 animate-pulse' : 'bg-slate-400 dark:bg-slate-600'}`} />
                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{loading ? 'Processing Visuals...' : 'Ready for Deployment'}</span>
                 </div>
               </div>
@@ -440,7 +441,7 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
                 {remixImage ? (
                   <img src={remixImage} className="w-full h-full object-contain animate-in fade-in zoom-in-95 duration-700" alt="Result" />
                 ) : (
-                  <div className="flex flex-col items-center justify-center text-slate-700 opacity-20">
+                  <div className="flex flex-col items-center justify-center text-slate-500 dark:text-slate-700 opacity-20">
                     <Zap size={80} className="mb-4" />
                     <p className="text-xl font-bold uppercase tracking-[0.5em]">Chamber Ready</p>
                   </div>
@@ -478,19 +479,19 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, o
             {/* SYNTHESIS REPORT */}
             <div className="lg:col-span-5 flex flex-col h-full">
               {resultText ? (
-                <div className="flex-1 rounded-[2.5rem] bg-slate-950/50 border border-slate-800 p-8 flex flex-col shadow-inner">
+                <div className="flex-1 rounded-[2.5rem] bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 p-8 flex flex-col shadow-inner">
                   <div className="flex items-center space-x-2 mb-6 text-slate-500">
                     <Sparkles size={14} />
                     <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Synthesis Neural Report</span>
                   </div>
-                  <div className="flex-1 overflow-y-auto text-sm text-slate-400 leading-relaxed font-light scrollbar-hide">
+                  <div className="flex-1 overflow-y-auto text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-light scrollbar-hide">
                     {resultText}
                   </div>
                 </div>
               ) : (
-                <div className="flex-1 rounded-[2.5rem] border border-slate-800 border-dashed p-8 flex flex-col items-center justify-center opacity-20 hover:opacity-40 transition-opacity">
-                  <FileCode size={48} className="mb-4 text-slate-600" />
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600 text-center max-w-[200px]">Waiting for Synthesis deployment</p>
+                <div className="flex-1 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 border-dashed p-8 flex flex-col items-center justify-center opacity-20 hover:opacity-40 transition-opacity">
+                  <FileCode size={48} className="mb-4 text-slate-500 dark:text-slate-600" />
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-600 text-center max-w-[200px]">Waiting for Synthesis deployment</p>
                 </div>
               )}
               {error && <div className="mt-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs animate-in shake duration-300"><AlertCircle size={14} className="inline mr-2" />{error}</div>}

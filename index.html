@@ -4,17 +4,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WEED LABS | AI Creative Suite</title>
+    <title>SUNWEED | AI Creative Suite</title>
     <link rel="icon" type="image/png" href="./logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
     <style>
+        :root {
+            --bg-primary: #f8fafc;
+            --text-primary: #0f172a;
+            --scrollbar-bg: #f1f5f9;
+            --scrollbar-thumb: #cbd5e1;
+            --scrollbar-thumb-hover: #94a3b8;
+        }
+
+        .dark {
+            --bg-primary: #020617;
+            --text-primary: #f8fafc;
+            --scrollbar-bg: #020617;
+            --scrollbar-thumb: #1e293b;
+            --scrollbar-thumb-hover: #334155;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #020617;
-            color: #f8fafc;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         .mono {
@@ -34,16 +64,16 @@
         }
 
         ::-webkit-scrollbar-track {
-            background: #020617;
+            background: var(--scrollbar-bg);
         }
 
         ::-webkit-scrollbar-thumb {
-            background: #1e293b;
+            background: var(--scrollbar-thumb);
             border-radius: 4px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: #334155;
+            background: var(--scrollbar-thumb-hover);
         }
     </style>
 </head>

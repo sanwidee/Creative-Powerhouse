@@ -44,17 +44,6 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
       const data = await analyzeDesign(image, notes);
       if (!data.json || !data.markdown) throw new Error("Incomplete DNA extraction.");
       setResult(data);
-
-      // Auto-generate visual sample
-      setTemplateLoading(true);
-      try {
-        const generated = await generateTemplateImage(data.json, ratio);
-        setTemplateImage(generated.image);
-      } catch (tErr) {
-        console.warn("Auto-visual generation failed, but DNA was captured.");
-      } finally {
-        setTemplateLoading(false);
-      }
     } catch (err: any) {
       console.error(err);
       setError(err.message || "The lab couldn't decode this design DNA. Please try another image.");
@@ -98,32 +87,32 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
       <div className="flex items-center space-x-4 mb-8">
         <button
           onClick={onBack}
-          className="p-3 rounded-xl bg-slate-800/50 text-slate-400 hover:text-white hover:bg-slate-700 transition-all active:scale-95 flex items-center justify-center"
+          className="p-3 rounded-xl bg-white/50 dark:bg-slate-800/50 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all active:scale-95 flex items-center justify-center shadow-sm"
         >
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Design DNA Builder</h2>
-          <p className="text-slate-400">Deconstruct visuals into production logic.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Design DNA Builder</h2>
+          <p className="text-slate-500 dark:text-slate-400">Deconstruct visuals into production logic.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
         {/* INPUT COLUMN */}
         <div className="lg:col-span-5 flex flex-col h-full">
-          <div className="p-6 rounded-[2rem] border border-slate-800 bg-slate-900/50 shadow-2xl space-y-6 relative overflow-hidden flex-1 flex flex-col justify-between">
+          <div className="p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/50 shadow-xl dark:shadow-2xl backdrop-blur-xl space-y-6 relative overflow-hidden flex-1 flex flex-col justify-between">
             <div className="space-y-6">
               <div className="space-y-4">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Step 1: Upload Source</label>
                 {!image ? (
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="aspect-video border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-800/30 hover:border-blue-500/50 transition-all group active:scale-[0.99]"
+                    className="aspect-video border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/30 hover:border-blue-500/50 transition-all group active:scale-[0.99]"
                   >
-                    <div className="p-4 rounded-full bg-slate-800/50 group-hover:scale-110 transition-transform">
-                      <Upload size={32} className="text-slate-500 group-hover:text-blue-400" />
+                    <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800/50 group-hover:scale-110 transition-transform">
+                      <Upload size={32} className="text-slate-400 dark:text-slate-500 group-hover:text-blue-500 dark:group-hover:text-blue-400" />
                     </div>
-                    <span className="text-sm text-slate-400 mt-4">Drop inspiration here</span>
+                    <span className="text-sm text-slate-500 dark:text-slate-400 mt-4">Drop inspiration here</span>
                     <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                   </div>
                 ) : (
@@ -146,7 +135,7 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
                 <textarea
                   rows={4}
                   placeholder="Add context... (e.g., 'Focus only on the grid layout' or 'Ignore the illustration style')"
-                  className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500/50 focus:outline-none transition-all placeholder:text-slate-600"
+                  className="w-full p-4 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-2 focus:ring-blue-500/50 focus:outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                 />
@@ -185,34 +174,34 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
         <div className="lg:col-span-7 h-full flex flex-col">
           {result ? (
             <div className="animate-in slide-in-from-bottom-4 duration-500 flex flex-col h-full space-y-6 flex-1">
-              <div className="bg-slate-900/80 backdrop-blur-md rounded-[2rem] p-8 border border-slate-800 shadow-2xl flex-1 flex flex-col">
+              <div className="bg-white/90 dark:bg-slate-900/80 backdrop-blur-md rounded-[2rem] p-8 border border-slate-200 dark:border-slate-800 shadow-2xl flex-1 flex flex-col">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
                   <div>
                     <div className="flex items-center space-x-2 mb-1">
                       <CheckCircle2 size={16} className="text-green-500" />
-                      <h4 className="font-bold text-lg">DNA Synthesis Complete</h4>
+                      <h4 className="font-bold text-lg text-slate-900 dark:text-white">DNA Synthesis Complete</h4>
                     </div>
                     <p className="text-sm text-slate-500 italic">Extracted: {result.json?.template_name || 'Unknown Blueprint'}</p>
                   </div>
 
-                  <div className="flex items-center space-x-2 bg-slate-800/50 p-1.5 rounded-xl border border-slate-700/50">
+                  <div className="flex items-center space-x-2 bg-slate-100 dark:bg-slate-800/50 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700/50">
                     <LayoutTemplate size={14} className="ml-2 text-slate-500" />
                     <select
                       value={result.json.blueprint_type || 'headline'}
                       onChange={(e) => setResult({ ...result, json: { ...result.json, blueprint_type: e.target.value as any } })}
-                      className="bg-transparent text-xs font-bold text-slate-300 outline-none px-2 cursor-pointer w-24"
+                      className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-300 outline-none px-2 cursor-pointer w-24"
                     >
-                      <option value="headline" className="bg-slate-900">Headline</option>
-                      <option value="carousel" className="bg-slate-900">Carousel</option>
-                      <option value="mixed" className="bg-slate-900">Mixed</option>
+                      <option value="headline" className="bg-white dark:bg-slate-900">Headline</option>
+                      <option value="carousel" className="bg-white dark:bg-slate-900">Carousel</option>
+                      <option value="mixed" className="bg-white dark:bg-slate-900">Mixed</option>
                     </select>
-                    <div className="w-px h-4 bg-slate-700 mx-1" />
+                    <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 mx-1" />
                     <select
                       value={ratio}
                       onChange={(e) => setRatio(e.target.value as AspectRatio)}
-                      className="bg-transparent text-xs font-bold text-slate-300 outline-none px-2 cursor-pointer"
+                      className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-300 outline-none px-2 cursor-pointer"
                     >
-                      {['1:1', '9:16', '16:9', '4:3', '3:4'].map(r => <option key={r} value={r} className="bg-slate-900">{r}</option>)}
+                      {['1:1', '9:16', '16:9', '4:3', '3:4'].map(r => <option key={r} value={r} className="bg-white dark:bg-slate-900">{r}</option>)}
                     </select>
                   </div>
                   <button
@@ -229,9 +218,17 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
                   {templateImage ? (
                     <img src={templateImage} className="w-full h-full object-contain animate-in zoom-in-95 duration-500" alt="Mockup" />
                   ) : (
-                    <div className="flex flex-col items-center justify-center text-slate-700 p-8 text-center">
+                    <div className="flex flex-col items-center justify-center text-slate-500 dark:text-slate-700 p-8 text-center">
                       <Terminal size={48} className="mb-4 opacity-20" />
-                      <p className="text-sm font-mono uppercase tracking-widest opacity-40">Awaiting Validation Pulse</p>
+                      <p className="text-sm font-mono uppercase tracking-widest opacity-40">Visual Proxy Not Generated</p>
+                      <button
+                        onClick={handleGenerateTemplate}
+                        disabled={templateLoading}
+                        className="mt-4 px-6 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold text-white transition-all active:scale-95 flex items-center space-x-2 shadow-lg shadow-indigo-900/20"
+                      >
+                        {templateLoading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                        <span>Generate Reference Image</span>
+                      </button>
                     </div>
                   )}
                   {templateLoading && (
@@ -276,7 +273,7 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
               </div>
             </div>
           ) : (
-            <div className="h-full min-h-[500px] border border-slate-800 border-dashed rounded-[2rem] flex flex-col items-center justify-center text-slate-600 text-center p-12 transition-all">
+            <div className="h-full min-h-[500px] border border-slate-200 dark:border-slate-800 border-dashed rounded-[2rem] flex flex-col items-center justify-center text-slate-500 dark:text-slate-600 text-center p-12 transition-all">
               <div className="relative mb-6">
                 <Zap size={64} className="opacity-5" />
                 {loading && <Loader2 size={64} className="absolute inset-0 animate-spin text-blue-500/30" />}
@@ -293,12 +290,12 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
       {/* DETAILED DNA REGISTRY OUTPUT */}
       {result && (
         <div className="mt-12 animate-in slide-in-from-bottom-8 duration-700">
-          <div className="p-8 rounded-[2rem] bg-slate-900/50 border border-slate-800/50 shadow-2xl">
-            <div className="flex items-center space-x-3 mb-8 border-b border-slate-800 pb-4">
+          <div className="p-8 rounded-[2rem] bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/50 shadow-2xl backdrop-blur-sm">
+            <div className="flex items-center space-x-3 mb-8 border-b border-slate-200 dark:border-slate-800 pb-4">
               <div className="p-2 rounded-lg bg-blue-500/10">
                 <Code size={18} className="text-blue-400" />
               </div>
-              <h3 className="text-lg font-bold tracking-tight">Machine DNA Registry</h3>
+              <h3 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Machine DNA Registry</h3>
               <span className="text-[10px] font-mono text-slate-500 ml-auto uppercase tracking-[0.3em]">PROMPT_VARIABLES_V2.0</span>
             </div>
 
@@ -350,23 +347,23 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
                 <div className="p-2 rounded-lg bg-orange-500/10">
                   <Terminal size={18} className="text-orange-400" />
                 </div>
-                <h3 className="text-lg font-bold tracking-tight">Content Inventory Registry</h3>
+                <h3 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Content Inventory Registry</h3>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {result.json.content_registry.map((field, idx) => (
-                  <div key={idx} className="p-5 rounded-2xl bg-slate-800/40 border border-slate-700/30 space-y-2">
+                  <div key={idx} className="p-5 rounded-2xl bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/30 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{field.label}</span>
-                      <span className="text-[8px] px-2 py-0.5 rounded-full bg-slate-700 text-slate-400 uppercase font-bold">{field.type}</span>
+                      <span className="text-[8px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 uppercase font-bold">{field.type}</span>
                     </div>
-                    <p className="text-xs text-slate-300 italic">"{field.placeholder}"</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 italic">"{field.placeholder}"</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="mt-8 p-6 rounded-2xl bg-slate-950/50 border border-slate-800/80 font-mono text-xs text-blue-400/70 overflow-x-auto">
+            <div className="mt-8 p-6 rounded-2xl bg-slate-100 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800/80 font-mono text-xs text-blue-600/70 dark:text-blue-400/70 overflow-x-auto">
               <p className="mb-2 opacity-50 uppercase tracking-widest text-[10px] font-bold">Generated Visual DNA Prompt</p>
               <p className="italic leading-relaxed">"{result.json.base_visual_dna_prompt}"</p>
             </div>
@@ -378,12 +375,12 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
 };
 
 const VariableBox = ({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) => (
-  <div className="p-5 rounded-2xl bg-slate-800/40 border border-slate-700/30 flex flex-col space-y-3 transition-all hover:border-slate-600 group">
+  <div className="p-5 rounded-2xl bg-white dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/30 flex flex-col space-y-3 transition-all hover:border-slate-300 dark:hover:border-slate-600 group">
     <div className="flex items-center space-x-2">
       {icon}
       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{label}</span>
     </div>
-    <p className="text-xs font-medium text-slate-200 leading-relaxed group-hover:text-white transition-colors capitalize">
+    <p className="text-xs font-medium text-slate-700 dark:text-slate-200 leading-relaxed group-hover:text-black dark:group-hover:text-white transition-colors capitalize">
       {value || 'N/A'}
     </p>
   </div>

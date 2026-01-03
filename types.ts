@@ -15,19 +15,18 @@ declare global {
 export interface ExtractedField {
   id: string;
   label: string;
-  placeholder: string;
   type: 'text' | 'number' | 'call_to_action';
+  description?: string; // NEW: Precise location/context for the functional map
 }
 
 export interface VisualStyle {
   layout_archetype: string;
   typography_system: string;
-  color_grammar: string;
-  composition_map: string;
-  aesthetic_motifs: string;
-  has_character_slot?: boolean; // NEW: Indicates if layout expects a character/mascot
-  dark_theme_adaptation?: string; // NEW: Specific rules for dark mode adaptation
-  light_theme_adaptation?: string; // NEW: Specific rules for light mode adaptation
+  composition_map: string; // Keep this as it describes structure
+  // aesthetic_motifs: string; // REMOVED: Causes drift. We rely on the image.
+  has_character_slot?: boolean;
+  dark_theme_adaptation?: string;
+  light_theme_adaptation?: string;
 }
 
 export interface BrandDNA {
@@ -43,20 +42,16 @@ export interface BrandDNA {
 
 export interface DesignPromptJson {
   template_name: string;
-  blueprint_type?: 'headline' | 'carousel' | 'mixed'; // NEW: Categorize blueprint intent
+  blueprint_type?: 'headline' | 'carousel' | 'mixed';
   structural_rules: VisualStyle;
   layout_constraints: {
     forbidden_elements: string[];
     mandatory_anchors: string[];
     white_space_logic: string;
   };
-  placeholder_map: {
-    headline_style: string;
-    body_style: string;
-    cta_style: string;
-  };
+  // placeholder_map: Removed as it was redundant/confusing
   content_registry: ExtractedField[];
-  base_visual_dna_prompt: string;
+  base_visual_dna_prompt?: string; // DEPRECATED: Optional legacy field
 }
 
 export interface ContentBrief {
@@ -162,6 +157,23 @@ export interface GeneratedCharacterPose {
   createdAt: number;
 }
 
+export interface AudioDNA {
+  voice_id: string;
+  name: string;
+  gender: 'male' | 'female' | 'neutral';
+  tone: string;
+  age: string;
+  accent: string;
+  style_prompt: string;
+}
+
+export interface AudioReference {
+  id: string;
+  name: string;
+  dna: AudioDNA;
+  createdAt: number;
+}
+
 export enum AppTool {
   LANDING = 'landing',
   BUILDER = 'builder',
@@ -171,7 +183,9 @@ export enum AppTool {
   BRAND_LAB = 'brand_lab',
   CHARACTER_LAB = 'character_lab',
   CHARACTER_STUDIO = 'character_studio',
-  SETTINGS = 'settings'
+  AUDIO_LAB = 'audio_lab',
+  SETTINGS = 'settings',
+  DOCS = 'docs'
 }
 
 export type RemixIntensity = 'strict' | 'light' | 'heavy';

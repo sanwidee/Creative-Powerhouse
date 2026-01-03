@@ -56,33 +56,33 @@ const BrandLab: React.FC<BrandLabProps> = ({ onSave, onBack }) => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8 animate-in fade-in duration-500">
+    <div className="max-w-6xl mx-auto px-6 py-8 animate-in fade-in duration-500 text-slate-900 dark:text-slate-100">
       <div className="flex items-center space-x-4 mb-8">
         <button
           onClick={onBack}
-          className="p-3 rounded-xl bg-slate-800/50 text-slate-400 hover:text-white transition-all active:scale-95 flex items-center justify-center"
+          className="p-3 rounded-xl bg-white/50 dark:bg-slate-800/50 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all active:scale-95 flex items-center justify-center shadow-sm"
         >
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Brand Identity Lab</h2>
-          <p className="text-slate-400">Extract core color grammar and vibe DNA.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Brand Identity Lab</h2>
+          <p className="text-slate-500 dark:text-slate-400">Extract core color grammar and vibe DNA.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         <div className="space-y-6">
-          <div className="p-6 rounded-[2rem] border border-slate-800 bg-slate-900/50 shadow-2xl space-y-6">
+          <div className="p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/50 shadow-xl dark:shadow-2xl backdrop-blur-xl space-y-6">
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Asset Input</h3>
             {!image ? (
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="aspect-square border-2 border-dashed border-slate-700 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-800/30 hover:border-pink-500/50 transition-all group active:scale-[0.99]"
+                className="aspect-square border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/30 hover:border-pink-500/50 transition-all group active:scale-[0.99]"
               >
-                <div className="p-4 rounded-full bg-slate-800/50 group-hover:scale-110 transition-transform">
-                  <Upload size={32} className="text-slate-500 group-hover:text-pink-400" />
+                <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800/50 group-hover:scale-110 transition-transform">
+                  <Upload size={32} className="text-slate-400 dark:text-slate-500 group-hover:text-pink-400" />
                 </div>
-                <span className="text-sm text-slate-400 mt-4">Drop Logo or Moodboard</span>
+                <span className="text-sm text-slate-500 dark:text-slate-400 mt-4">Drop Logo or Moodboard</span>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
               </div>
             ) : (
@@ -109,7 +109,7 @@ const BrandLab: React.FC<BrandLabProps> = ({ onSave, onBack }) => {
             <button
               onClick={handleAnalyze}
               disabled={loading || !image}
-              className={`w-full py-5 rounded-2xl font-bold flex items-center justify-center space-x-3 transition-all active:scale-[0.98] shadow-lg ${loading ? 'bg-slate-800 text-slate-500' : 'bg-pink-600 hover:bg-pink-500 text-white shadow-pink-900/20'
+              className={`w-full py-5 rounded-2xl font-bold flex items-center justify-center space-x-3 transition-all active:scale-[0.98] shadow-lg ${loading ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500' : 'bg-pink-600 hover:bg-pink-500 text-white shadow-pink-900/20'
                 }`}
             >
               {loading ? (
@@ -130,10 +130,10 @@ const BrandLab: React.FC<BrandLabProps> = ({ onSave, onBack }) => {
         <div>
           {dna ? (
             <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
-              <div className="p-8 rounded-[2rem] bg-slate-900 border border-slate-800 shadow-2xl relative overflow-hidden">
+              <div className="p-8 rounded-[2rem] bg-white/90 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl relative overflow-hidden backdrop-blur-xl">
                 <div className="flex justify-between items-center mb-8">
                   <div>
-                    <h3 className="text-2xl font-bold text-pink-400">{dna.brand_name}</h3>
+                    <h3 className="text-2xl font-bold text-pink-500 dark:text-pink-400">{dna.brand_name}</h3>
                     <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">DNA Analysis Report</p>
                   </div>
                   <button
@@ -161,13 +161,13 @@ const BrandLab: React.FC<BrandLabProps> = ({ onSave, onBack }) => {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="p-5 rounded-2xl bg-slate-800/30 border border-slate-700/50">
+                    <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50">
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Brand Vibe</span>
-                      <p className="text-sm text-slate-300 italic">"{dna.brand_vibe}"</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300 italic">"{dna.brand_vibe}"</p>
                     </div>
-                    <div className="p-5 rounded-2xl bg-slate-800/30 border border-slate-700/50">
+                    <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50">
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Color Usage</span>
-                      <p className="text-sm text-slate-300 leading-relaxed">{dna.color_logic}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{dna.color_logic}</p>
                     </div>
                   </div>
 
@@ -184,12 +184,12 @@ const BrandLab: React.FC<BrandLabProps> = ({ onSave, onBack }) => {
               </div>
             </div>
           ) : (
-            <div className="h-full min-h-[400px] border border-slate-800 border-dashed rounded-[2rem] flex flex-col items-center justify-center p-12 text-slate-600 text-center transition-all">
-              <div className="p-6 rounded-full bg-slate-800/30 mb-6">
-                <Palette size={48} className="opacity-10" />
+            <div className="h-full min-h-[400px] border border-slate-200 dark:border-slate-800 border-dashed rounded-[2rem] flex flex-col items-center justify-center p-12 text-slate-500 dark:text-slate-600 text-center transition-all">
+              <div className="p-6 rounded-full bg-slate-100 dark:bg-slate-800/30 mb-6">
+                <Palette size={48} className="opacity-10 dark:opacity-20 text-slate-400 dark:text-slate-500" />
               </div>
-              <h3 className="text-xl font-bold text-slate-400 mb-2">Awaiting Brand Input</h3>
-              <p className="text-sm max-w-xs mx-auto leading-relaxed">
+              <h3 className="text-xl font-bold text-slate-400 dark:text-slate-400 mb-2">Awaiting Brand Input</h3>
+              <p className="text-sm max-w-xs mx-auto leading-relaxed text-slate-500 dark:text-slate-500">
                 Extract Brand DNA to see color grammar, visual constraints, and style logic. This data can be used as a filter in the Generator.
               </p>
             </div>

@@ -102,9 +102,9 @@ const CharacterStudio: React.FC<CharacterStudioProps> = ({ characters, onSave, o
     };
 
     return (
-        <div className="min-h-screen bg-[#020617] text-slate-100 p-6">
+        <div className="min-h-screen bg-[#F8FAFC] dark:bg-[#020617] text-slate-900 dark:text-slate-100 p-6 transition-colors duration-500">
             <div className="max-w-5xl mx-auto">
-                <button onClick={onBack} className="mb-6 flex items-center space-x-2 text-slate-400 hover:text-white transition-colors">
+                <button onClick={onBack} className="mb-6 flex items-center space-x-2 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors">
                     <ArrowLeft size={20} />
                     <span className="font-semibold">Back to Lab</span>
                 </button>
@@ -114,21 +114,21 @@ const CharacterStudio: React.FC<CharacterStudioProps> = ({ characters, onSave, o
                         <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
                             <Wand2 size={28} className="text-purple-400" />
                         </div>
-                        <h1 className="text-4xl font-bold">Character Studio</h1>
+                        <h1 className="text-4xl font-bold text-slate-900 dark:text-white">Character Studio</h1>
                     </div>
-                    <p className="text-slate-400 text-sm">Generate character poses using saved DNA</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">Generate character poses using saved DNA</p>
                 </div>
 
                 {/* Character Selection */}
-                <div className="mb-8 p-6 rounded-2xl border border-slate-800 bg-slate-900/50">
-                    <h2 className="text-xl font-bold mb-4">Select Character DNA</h2>
+                <div className="mb-8 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 shadow-sm dark:shadow-none">
+                    <h2 className="text-xl font-bold mb-4 text-slate-900 dark:text-white">Select Character DNA</h2>
                     {characters.length === 0 ? (
-                        <p className="text-slate-400 text-sm">No characters available. Create one in Character Lab first.</p>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm">No characters available. Create one in Character Lab first.</p>
                     ) : (
                         <select
                             value={selectedCharacterId}
                             onChange={(e) => setSelectedCharacterId(e.target.value)}
-                            className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-500/50"
+                            className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-500/50 text-slate-900 dark:text-white"
                         >
                             <option value="">-- Select a character --</option>
                             {characters.map(char => (
@@ -139,19 +139,19 @@ const CharacterStudio: React.FC<CharacterStudioProps> = ({ characters, onSave, o
 
                     {/* Character Preview */}
                     {selectedCharacter && (
-                        <div className="mt-6 p-4 rounded-xl bg-slate-800/50 border border-slate-700">
-                            <h3 className="font-bold mb-2">{selectedCharacter.name}</h3>
+                        <div className="mt-6 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                            <h3 className="font-bold mb-2 text-slate-900 dark:text-white">{selectedCharacter.name}</h3>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                                 <div>
-                                    <p className="text-slate-400 mb-1">Physical Features:</p>
-                                    <p className="text-xs">{selectedCharacter.dna.physical_features.slice(0, 100)}...</p>
+                                    <p className="text-slate-500 dark:text-slate-400 mb-1">Physical Features:</p>
+                                    <p className="text-xs text-slate-700 dark:text-slate-300">{selectedCharacter.dna.physical_features.slice(0, 100)}...</p>
                                 </div>
                                 <div>
-                                    <p className="text-slate-400 mb-1">Style:</p>
+                                    <p className="text-slate-500 dark:text-slate-400 mb-1">Style:</p>
                                     <div className="flex items-center space-x-2">
-                                        <p className="text-xs">{selectedCharacter.dna.style_notes}</p>
+                                        <p className="text-xs text-slate-700 dark:text-slate-300">{selectedCharacter.dna.style_notes}</p>
                                         {selectedCharacter.dna.assigned_art_style && selectedCharacter.dna.assigned_art_style !== 'original' && (
-                                            <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
+                                            <span className="bg-purple-500/20 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
                                                 {selectedCharacter.dna.assigned_art_style.replace('_', ' ')}
                                             </span>
                                         )}
@@ -161,7 +161,7 @@ const CharacterStudio: React.FC<CharacterStudioProps> = ({ characters, onSave, o
                             {selectedCharacter.dna.reference_images.length > 0 && (
                                 <div className="mt-4 flex gap-2 overflow-x-auto">
                                     {selectedCharacter.dna.reference_images.slice(0, 3).map((img, idx) => (
-                                        <img key={idx} src={img} alt={`Ref ${idx}`} className="h-24 w-24 object-cover rounded-lg border border-slate-600" />
+                                        <img key={idx} src={img} alt={`Ref ${idx}`} className="h-24 w-24 object-cover rounded-lg border border-slate-200 dark:border-slate-600" />
                                     ))}
                                 </div>
                             )}
@@ -172,14 +172,14 @@ const CharacterStudio: React.FC<CharacterStudioProps> = ({ characters, onSave, o
                 {/* Pose Input */}
                 {selectedCharacter && (
                     <>
-                        <div className="mb-8 p-6 rounded-2xl border border-slate-800 bg-slate-900/50">
-                            <h2 className="text-xl font-bold mb-4">Define Pose</h2>
+                        <div className="mb-8 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 shadow-sm dark:shadow-none">
+                            <h2 className="text-xl font-bold mb-4 text-slate-900 dark:text-white">Define Pose</h2>
 
                             {/* Input Mode Toggle */}
                             <div className="flex space-x-4 mb-6">
                                 <button
                                     onClick={() => setInputMode('text')}
-                                    className={`flex-1 py-3 rounded-xl font-semibold transition-all flex items-center justify-center space-x-2 ${inputMode === 'text' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                    className={`flex-1 py-3 rounded-xl font-semibold transition-all flex items-center justify-center space-x-2 ${inputMode === 'text' ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                                         }`}
                                 >
                                     <TypeIcon size={18} />
@@ -187,7 +187,7 @@ const CharacterStudio: React.FC<CharacterStudioProps> = ({ characters, onSave, o
                                 </button>
                                 <button
                                     onClick={() => setInputMode('image')}
-                                    className={`flex-1 py-3 rounded-xl font-semibold transition-all flex items-center justify-center space-x-2 ${inputMode === 'image' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                    className={`flex-1 py-3 rounded-xl font-semibold transition-all flex items-center justify-center space-x-2 ${inputMode === 'image' ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                                         }`}
                                 >
                                     <ImageIcon size={18} />
@@ -202,7 +202,7 @@ const CharacterStudio: React.FC<CharacterStudioProps> = ({ characters, onSave, o
                                     <textarea
                                         value={posePrompt}
                                         onChange={(e) => setPosePrompt(e.target.value)}
-                                        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-500/50 min-h-[100px]"
+                                        className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-500/50 min-h-[100px] text-slate-900 dark:text-white"
                                         placeholder="e.g., jumping with arms raised, sitting cross-legged, running forward..."
                                     />
                                 </div>
@@ -242,7 +242,7 @@ const CharacterStudio: React.FC<CharacterStudioProps> = ({ characters, onSave, o
                                         <button
                                             key={ratio}
                                             onClick={() => setAspectRatio(ratio)}
-                                            className={`py-2 rounded-lg font-semibold transition-all ${aspectRatio === ratio ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                            className={`py-2 rounded-lg font-semibold transition-all ${aspectRatio === ratio ? 'bg-purple-600 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                                                 }`}
                                         >
                                             {ratio}
@@ -256,7 +256,7 @@ const CharacterStudio: React.FC<CharacterStudioProps> = ({ characters, onSave, o
                             <button
                                 onClick={handlePreviewPrompt}
                                 disabled={isGenerating || (inputMode === 'image' ? !poseReference : !posePrompt.trim())}
-                                className="py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-all flex items-center justify-center space-x-2 border border-slate-700"
+                                className="py-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-white rounded-xl font-bold transition-all flex items-center justify-center space-x-2 border border-slate-200 dark:border-slate-700 shadow-sm"
                             >
                                 <Eye size={20} />
                                 <span>View Prompt</span>
@@ -285,9 +285,9 @@ const CharacterStudio: React.FC<CharacterStudioProps> = ({ characters, onSave, o
                 {/* Generated Result */}
                 {generatedImage && (
                     <div className="p-6 rounded-2xl border border-purple-500/20 bg-purple-500/5">
-                        <h2 className="text-xl font-bold mb-4 text-purple-400">Generated Pose</h2>
+                        <h2 className="text-xl font-bold mb-4 text-purple-600 dark:text-purple-400">Generated Pose</h2>
                         <div className="mb-4">
-                            <img src={generatedImage} alt="Generated pose" className="w-full rounded-lg border border-slate-700" />
+                            <img src={generatedImage} alt="Generated pose" className="w-full rounded-lg border border-slate-200 dark:border-slate-700" />
                         </div>
 
                         <div className="mb-4">
@@ -296,7 +296,7 @@ const CharacterStudio: React.FC<CharacterStudioProps> = ({ characters, onSave, o
                                 type="text"
                                 value={poseName}
                                 onChange={(e) => setPoseName(e.target.value)}
-                                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-500/50"
+                                className="w-full px-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-purple-500/50 text-slate-900 dark:text-white"
                                 placeholder="Enter pose name..."
                             />
                         </div>

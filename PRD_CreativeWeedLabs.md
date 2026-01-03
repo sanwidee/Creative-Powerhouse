@@ -20,30 +20,72 @@ The system is organized into specialized "Labs" that extract distinct DNA strand
 ### 🧪 3.1 Design Builder (`Builder.tsx`)
 - **Purpose**: Deconstructs social media posts or complex designs into modular rules.
 - **Output**: `Design DNA` (Structural rules, layout archetype, typography system, and composition maps).
-- **Connection**: Stores a `DesignReference`. This serves as the **layout blueprint** for the Post Generator.
+- **Gemini Interaction**:
+    - **Prompt**: "You are a World-Class Creative Director... Task: Deconstruct the provided social media post into its modular 'Design DNA'..."
+    - **Variables**: `imageB64`, `userNotes`.
+    - **Model**: `gemini-3-flash-preview` (Text).
 
 ### 🎨 3.2 Brand Identity Lab (`BrandLab.tsx`)
 - **Purpose**: Extracts brand-specific visual rules from logos, assets, or style guides.
 - **Output**: `Brand DNA` (Color palette, brand vibe, typography notes).
-- **Connection**: Stores a `BrandReference`. This acts as a **visual skin** that can be applied to any layout blueprint.
+- **Gemini Interaction**:
+    - **Prompt**: "Analyze this brand asset. Extract Brand DNA. Return ONLY a JSON object..."
+    - **Variables**: `imageB64`.
+    - **Model**: `gemini-3-flash-preview` (Text).
 
-### 🍱 3.3 Carousel Generator (`CarouselGenerator.tsx`)
-- **Purpose**: A production line for multi-slide content.
-- **Function**: Allows users to define headlines and visual nuances for each slide while inheriting the universal Design DNA from a blueprint.
-- **Character Slotting**: Detects if a blueprint expects a character and allows "injecting" a Character DNA into every slide.
-
-### 🎭 3.4 Character Lab & Studio (`CharacterLab.tsx`)
+### 🎭 3.4 Character Lab (`CharacterLab.tsx`)
 - **Purpose**: Consolidates character identity and physical features from multiple source images.
-- **V2 Upgrade**:
-    - **Identity Lock**: Implements strict visual anchoring to prevent "figure drift" during generation. 100% fidelity to the original facial features.
-    - **Style Remixing**: Ready-to-use modes (Plushy, Chibi, Animated, etc.) transform realistic images into stylized versions while preserving core identity.
-    - **Brand DNA Link**: Characters can be associated with Brand DNA to inherit color logic and brand personality.
-- **Output**: `Character DNA` (Physical features, visual details, strict color palettes, and Identity Lock state).
-- **Connection**: Provides the **identity anchor** for the Character Studio and **Deployment Engine** (Post/Carousel Generators).
+- **Gemini Interaction (Analysis)**:
+    - **Prompt**: "You are an expert Character Designer. Analyze the provided images to extract a consistent CHARACTER DNA profile..."
+    - **Variables**: `imagesB64[]`.
+    - **Model**: `gemini-3-flash-preview` (Text).
 
-### 🏛️ 3.5 Inspo Library (`Library.tsx`)
-- **Purpose**: The central "Vault" and management hub.
-- **Function**: Manages all saved DNA references and generated assets. It allows users to browse, update, and manage their creative laboratory's history. Updated to support **Carousel saving**.
+### 🏛️ 3.5 Generator (`Generator.tsx` & `CarouselGenerator.tsx`)
+This is the core recombination engine. To solve "Generation Entropy", it uses a **Hybrid Anchor Strategy** (Visual Anchor + Text DNA).
+
+#### 3.5.1 Deployment Engine (High Fidelity)
+- **Strategy**: Prioritizes strict visual adhearance to the source image (Blueprint) to prevent layout drift.
+- **Gemini Interaction**:
+    - **Prompt Construction**:
+        ```
+        VISUAL REFERENCE: Use the provided image (Image 1) as the STRUCTURAL and AESTHETIC SOURCE OF TRUTH. Mimic its layout, spacing, and vibe exactly.
+
+        Create a new post remix. 
+        SOURCE DNA: {JSON_DNA_FROM_BUILDER}
+        NEW BRIEF: {USER_BRIEF}
+        BRAND RULES: {BRAND_DNA_JSON}
+        CHARACTER DNA: {CHARACTER_DNA_LITE}
+        
+        INTENSITY: {INTENSITY_LEVEL}
+        
+        THEME ADAPTATION RULES: {THEME_RULES}
+        
+        COPY RULES:
+        - Must include specific text: "{BRIEF_COPY}"
+        ```
+    - **Attachments**:
+        1.  `Blueprint Original Image` (Visual Anchor).
+        2.  `Character Reference Image` (If character selected).
+    - **Model**: `gemini-3-flash-preview` (for Prompt Logic) -> `gemini-3-pro-image-preview` (for Final Render).
+
+### 📸 3.6 Character Studio (`CharacterStudio.tsx`)
+- **Purpose**: Generates consistent poses for a specific character.
+- **Gemini Interaction**:
+    - **Prompt**:
+        ```
+        CHARACTER SPECIFICATIONS:
+        - Name: {CHAR_NAME}
+        - Physical Features: {CHAR_DESC}
+        - Color Palette: {HEX_CODES}
+        
+        IDENTITY LOCK: Maintain 100% character consistency. Use the provided Character Reference image as the source of truth.
+        
+        POSE INSTRUCTION: {POSE_PROMPT} or "Sync with Reference Pose Image".
+        ```
+    - **Attachments**:
+        1.  `Character Primary Reference` (Identity Anchor).
+        2.  `Pose Reference Image` (Optional - Structure Anchor).
+    - **Model**: `gemini-3-pro-image-preview`.
 
 ---
 
@@ -55,8 +97,6 @@ The system is organized into specialized "Labs" that extract distinct DNA strand
 | **As a** brand manager, **I want** to capture my brand's color logic and vibe from a logo, **so that** I can ensure all generated content remains on-brand. | **Given** a brand asset image<br>**When** I process it in the Brand Lab<br>**Then** the system should extract primary hex codes and brand vibe notes<br>**And** allow me to save it as a `BrandReference`. | Essential for maintaining visual parity across different generation modules. |
 | **As a** character designer, **I want** to consolidate my character's physical identity and lock it, **so that** I can transform its style without losing its facial soul. | **Given** multiple photos of the same character<br>**When** I analyze them in the Character Lab and select a "Plushy" style<br>**Then** the system should generate a `CharacterDNA` and a turnaround sheet where the character is a plush toy but maintains its original identity.<br>**And** the system should store the "Identity Lock" as a permanent state. | Focuses on multi-image synthesis and style transformation without identity drift. |
 | **As a** social media manager, **I want** to combine a layout blueprint with my brand DNA and new copy, **so that** I can quickly produce high-quality, customized social posts. | **Given** a saved `DesignReference` and `BrandReference`<br>**When** I provide a content brief in the Post Generator<br>**Then** the system should generate a new high-fidelity image that respects both the layout DNA and the brand's visual rules. | The core recombination engine of the Production Lab. |
-| **As a** campaign manager, **I want** to build a multi-slide carousel from a single blueprint with character consistency, **so that** I can tell a story across slides. | **Given** a `DesignReference` with a character slot<br>**When** I provide multi-slide briefs and a `CharacterDNA` in the Carousel Generator<br>**Then** the system should output a sequence of cohesive slides featuring the character. | Enables storytelling with identity consistency across assets. |
-| **As a** character designer, **I want** to pose my consistent character using a reference image or text prompt, **so that** I can create dynamic scenes for my brand storytelling. | **Given** a `CharacterDNA` profile<br>**When** I provide a pose reference image or text instruction in the Character Studio<br>**Then** the system should output a new image of the exact same character in the desired pose using visual anchoring. | Critical for "Visual Parity"—ensuring the character doesn't "drift" between generations. |
 
 ---
 
@@ -64,7 +104,9 @@ The system is organized into specialized "Labs" that extract distinct DNA strand
 
 ### 🛠️ 5.1 Tech Stack
 - **Frontend**: React (v19), Vite, TypeScript, Tailwind CSS.
-- **Backend**: Express.js (Local production storage server).
+- **Backend (Hybrid)**: 
+    - **Local**: Express.js server for filesystem storage (`/database/*.json`).
+    - **Cloud/Fallback**: `storageService` adapter for Browser LocalStorage (Serverless support).
 - **AI Engine**: 
   - `gemini-3-flash-preview`: For rapid DNA extraction and logical analysis.
   - `gemini-3-pro-image-preview`: For photorealistic image generation and surgical refinement.
@@ -93,9 +135,9 @@ graph TD
 ---
 
 ## 🧪 6. Persistence & Infrastructure
-- **Data Storage**: `/database/*.json`
+- **Data Storage**: Hybrid (FileSystem JSON or LocalStorage).
 - **Cost Tracking**: Integrated `UsageLog` tracking USD/IDR conversion for Gemini API calls.
-- **Security**: Supports both `.env` managed keys and session-based manual key overrides.
+- **Deployment**: Supports Vercel (Serverless) or VPS (Node.js).
 
 ---
 

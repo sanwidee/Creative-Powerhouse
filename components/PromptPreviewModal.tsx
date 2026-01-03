@@ -19,6 +19,20 @@ const PromptPreviewModal: React.FC<PromptPreviewModalProps> = ({ data, onClose, 
         setTimeout(() => setCopied(false), 2000);
     };
 
+    const handleCopyImage = async (b64: string) => {
+        try {
+            const res = await fetch(b64);
+            const blob = await res.blob();
+            await navigator.clipboard.write([
+                new ClipboardItem({ [blob.type]: blob })
+            ]);
+            alert("Image copied to clipboard! You can now paste it into Gemini.");
+        } catch (e) {
+            console.error("Copy failed", e);
+            alert("Failed to copy image. Browser might not support this.");
+        }
+    };
+
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-black/90 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="w-full max-w-5xl max-h-[90vh] bg-[#0f172a] border border-slate-800 rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-500">
@@ -94,6 +108,18 @@ const PromptPreviewModal: React.FC<PromptPreviewModalProps> = ({ data, onClose, 
                                             </div>
                                             <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md border border-white/10 text-[8px] font-bold px-2 py-1 rounded-lg uppercase tracking-widest text-white/50">
                                                 Image {idx + 1}
+                                            </div>
+                                            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleCopyImage(img);
+                                                    }}
+                                                    className="p-1.5 rounded-lg bg-white/20 hover:bg-white text-white hover:text-black backdrop-blur-md transition-all"
+                                                    title="Copy Image to Clipboard"
+                                                >
+                                                    <Copy size={12} />
+                                                </button>
                                             </div>
                                         </div>
                                     ))
