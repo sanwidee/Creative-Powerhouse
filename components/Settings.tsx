@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Key, BarChart3, Database, CircleDollarSign, ArrowLeft, Loader2, Trash2, RefreshCcw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Settings as SettingsIcon, Key, BarChart3, Database, CircleDollarSign, ArrowLeft, Loader2, Trash2, RefreshCcw, CheckCircle2, AlertCircle, Cpu, Search, ImageIcon, Type, Check } from 'lucide-react';
 import { UsageLog } from '../types';
+import { listAvailableModels, GeminiModelInfo } from '../services/geminiService';
 
 interface SettingsProps {
     onBack: () => void;
@@ -14,7 +15,13 @@ const Settings: React.FC<SettingsProps> = ({ onBack, onUpdateKey, currentKey }) 
     const [loading, setLoading] = useState(true);
     const [manualKey, setManualKey] = useState(currentKey);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-    const [activeTab, setActiveTab] = useState<'api' | 'usage'>('usage');
+    const [activeTab, setActiveTab] = useState<'api' | 'usage' | 'models'>('usage');
+    const [availableModels, setAvailableModels] = useState<GeminiModelInfo[]>([]);
+    const [modelsLoading, setModelsLoading] = useState(false);
+    const [modelsError, setModelsError] = useState('');
+    const [modelSearch, setModelSearch] = useState('');
+    const [customTextModel, setCustomTextModel] = useState(localStorage.getItem('ikhsan_model_text') || '');
+    const [customImageModel, setCustomImageModel] = useState(localStorage.getItem('ikhsan_model_image') || '');
 
     useEffect(() => {
         fetchLogs();
@@ -57,6 +64,28 @@ const Settings: React.FC<SettingsProps> = ({ onBack, onUpdateKey, currentKey }) 
         }
     };
 
+    const fetchModels = async () => {
+        setModelsLoading(true);
+        setModelsError('');
+        try {
+            const models = await listAvailableModels();
+            setAvailableModels(models);
+        } catch (e: any) {
+            setModelsError(e.message || 'Failed to fetch models');
+        } finally {
+            setModelsLoading(false);
+        }
+    };
+
+    const saveCustomModels = () => {
+        if (customTextModel) localStorage.setItem('ikhsan_model_text', customTextModel);
+        else localStorage.removeItem('ikhsan_model_text');
+        if (customImageModel) localStorage.setItem('ikhsan_model_image', customImageModel);
+        else localStorage.removeItem('ikhsan_model_image');
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+    };
+
     const totalIDR = logs.reduce((sum, log) => sum + (log.costIDR || 0), 0);
     const totalUSD = logs.reduce((sum, log) => sum + (log.costUSD || 0), 0);
 
@@ -89,10 +118,167 @@ const Settings: React.FC<SettingsProps> = ({ onBack, onUpdateKey, currentKey }) 
                     >
                         <Key size={14} /><span>API Config</span>
                     </button>
+                    <button
+                        onClick={() => { setActiveTab('models'); if (availableModels.length === 0) fetchModels(); }}
+                        className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'models' ? 'bg-violet-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                    >
+                        <Cpu size={14} /><span>Models</span>
+                    </button>
                 </div>
             </div>
 
-            {activeTab === 'api' ? (
+            {activeTab === 'models' ? (
+                <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+                    {/* Current Custom Models */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="p-6 rounded-[2rem] bg-white/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 shadow-xl backdrop-blur-md space-y-3">
+                            <div className="flex items-center space-x-2 text-blue-500 mb-1">
+                                <Type size={16} />
+                                <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Text / Planning Model</span>
+                            </div>
+                            <input
+                                value={customTextModel}
+                                onChange={e => setCustomTextModel(e.target.value)}
+                                placeholder="e.g. gemini-2.0-flash"
+                                className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500/30"
+                            />
+                            <p className="text-[10px] text-slate-400">Used for DNA analysis, planning, and all text operations.</p>
+                        </div>
+                        <div className="p-6 rounded-[2rem] bg-white/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 shadow-xl backdrop-blur-md space-y-3">
+                            <div className="flex items-center space-x-2 text-purple-500 mb-1">
+                                <ImageIcon size={16} />
+                                <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Image Generation Model</span>
+                            </div>
+                            <input
+                                value={customImageModel}
+                                onChange={e => setCustomImageModel(e.target.value)}
+                                placeholder="e.g. gemini-2.0-flash-preview-image-generation"
+                                className="w-full px-4 py-3 bg-slate-100 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-purple-500/30"
+                            />
+                            <p className="text-[10px] text-slate-400">Must support generateContent with image output.</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={saveCustomModels}
+                        className={`px-8 py-3 rounded-2xl text-sm font-bold transition-all active:scale-95 ${saveStatus === 'saved' ? 'bg-green-600 text-white' : 'bg-violet-600 hover:bg-violet-500 text-white'}`}
+                    >
+                        {saveStatus === 'saved' ? '✓ Saved' : 'Save Custom Models'}
+                    </button>
+
+                    {/* Model Browser */}
+                    <div className="bg-white/80 dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden backdrop-blur-md">
+                        <div className="px-8 py-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 flex-wrap">
+                            <div>
+                                <h3 className="font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+                                    <Cpu size={16} className="text-violet-500" />
+                                    <span>Available Models</span>
+                                    {availableModels.length > 0 && <span className="text-[10px] font-normal text-slate-400 ml-2">{availableModels.length} models</span>}
+                                </h3>
+                                <p className="text-[10px] text-slate-400 mt-1">Click a model to set it as your custom text or image model.</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="relative">
+                                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        value={modelSearch}
+                                        onChange={e => setModelSearch(e.target.value)}
+                                        placeholder="Filter models..."
+                                        className="pl-8 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none w-48"
+                                    />
+                                </div>
+                                <button
+                                    onClick={fetchModels}
+                                    className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition-all"
+                                >
+                                    <RefreshCcw size={13} className={modelsLoading ? 'animate-spin' : ''} />
+                                    <span>{modelsLoading ? 'Fetching...' : 'Refresh'}</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {modelsError && (
+                            <div className="mx-8 mt-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center space-x-2">
+                                <AlertCircle size={14} />
+                                <span>{modelsError}</span>
+                            </div>
+                        )}
+
+                        <div className="overflow-x-auto">
+                            {modelsLoading ? (
+                                <div className="py-20 text-center text-slate-500">
+                                    <Loader2 className="animate-spin mx-auto mb-4" />
+                                    <p className="text-xs">Fetching from Gemini API...</p>
+                                </div>
+                            ) : availableModels.length === 0 ? (
+                                <div className="py-20 text-center text-slate-500 text-xs italic">
+                                    Click Refresh to load available models from your API key.
+                                </div>
+                            ) : (
+                                <table className="w-full text-left text-xs">
+                                    <thead>
+                                        <tr className="bg-slate-50 dark:bg-slate-800/30 text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                                            <th className="px-8 py-4 font-bold uppercase tracking-widest">Model ID</th>
+                                            <th className="px-6 py-4 font-bold uppercase tracking-widest">Methods</th>
+                                            <th className="px-6 py-4 font-bold uppercase tracking-widest text-right">Set As</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+                                        {availableModels
+                                            .filter(m => !modelSearch || m.name.toLowerCase().includes(modelSearch.toLowerCase()) || (m.displayName || '').toLowerCase().includes(modelSearch.toLowerCase()))
+                                            .map(model => {
+                                                const id = model.name.replace('models/', '');
+                                                const supportsGenerate = model.supportedGenerationMethods?.includes('generateContent');
+                                                const isCurrentText = customTextModel === id;
+                                                const isCurrentImage = customImageModel === id;
+                                                return (
+                                                    <tr key={model.name} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+                                                        <td className="px-8 py-4">
+                                                            <div className="flex flex-col">
+                                                                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{id}</span>
+                                                                {model.displayName && model.displayName !== id && (
+                                                                    <span className="text-[10px] text-slate-400">{model.displayName}</span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {(model.supportedGenerationMethods || []).map(m => (
+                                                                    <span key={m} className={`px-2 py-0.5 rounded text-[9px] font-bold ${m === 'generateContent' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
+                                                                        {m}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            {supportsGenerate && (
+                                                                <div className="flex items-center justify-end gap-2">
+                                                                    <button
+                                                                        onClick={() => setCustomTextModel(id)}
+                                                                        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${isCurrentText ? 'bg-blue-600 text-white' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20'}`}
+                                                                    >
+                                                                        {isCurrentText && <Check size={10} />}
+                                                                        <Type size={10} /> TEXT
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => setCustomImageModel(id)}
+                                                                        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${isCurrentImage ? 'bg-purple-600 text-white' : 'bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20'}`}
+                                                                    >
+                                                                        {isCurrentImage && <Check size={10} />}
+                                                                        <ImageIcon size={10} /> IMAGE
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            ) : activeTab === 'api' ? (
                 <div className="max-w-2xl animate-in slide-in-from-bottom-4 duration-500">
                     <div className="p-10 rounded-[2.5rem] bg-white/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 shadow-xl dark:shadow-2xl backdrop-blur-xl space-y-8">
                         <div className="flex items-center space-x-4 mb-2">
@@ -117,7 +303,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack, onUpdateKey, currentKey }) 
                                 </div>
                             </div>
                             <p className="text-[10px] text-slate-500 dark:text-slate-600 italic px-2 leading-relaxed">
-                                * Note: Manual key overrides the one in your `.env` file for the current browser session.
+                                * Key is saved to your browser's local storage and persists across sessions. It overrides any key in your <code>.env</code> file.
                             </p>
                         </div>
 

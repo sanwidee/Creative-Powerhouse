@@ -1,9 +1,9 @@
 
 import React, { useState, useRef } from 'react';
 // Added missing Rocket import
-import { Upload, Sparkles, Save, ArrowLeft, Loader2, Terminal, Zap, AlertCircle, CheckCircle2, ChevronRight, XCircle, Code, Layers, Palette, Type as TypeIcon, Rocket, Target, LayoutTemplate } from 'lucide-react';
+import { Upload, Sparkles, Save, ArrowLeft, Loader2, Terminal, Zap, AlertCircle, CheckCircle2, ChevronRight, XCircle, Code, Layers, Palette, Type as TypeIcon, Rocket, Target, LayoutTemplate, Tag } from 'lucide-react';
 import { analyzeDesign, generateTemplateImage } from '../services/geminiService';
-import { DesignReference, DesignPromptJson, AspectRatio, UsageLog } from '../types';
+import { DesignReference, DesignPromptJson, AspectRatio, UsageLog, BlueprintCategory } from '../types';
 
 interface BuilderProps {
   onSave: (ref: DesignReference) => void;
@@ -20,7 +20,21 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
   const [templateImage, setTemplateImage] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [category, setCategory] = useState<BlueprintCategory>('other');
+  const [tagInput, setTagInput] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim().toLowerCase())) {
+      setTags([...tags, tagInput.trim().toLowerCase()]);
+      setTagInput('');
+    }
+  };
+
+  const removeTag = (tag: string) => {
+    setTags(tags.filter(t => t !== tag));
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -71,7 +85,8 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
     onSave({
       id: Date.now().toString(),
       name: result.json.template_name || 'Untitled Blueprint',
-      tags: [],
+      tags,
+      category,
       imageSource: image,
       templateImage: templateImage || undefined,
       markdownBrief: result.markdown,
@@ -247,6 +262,64 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
                   <div className="p-4 rounded-2xl bg-slate-800/30 border border-slate-700/50">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Typography</span>
                     <p className="text-xs font-semibold text-slate-300 truncate">{result.json?.structural_rules?.typography_system || 'N/A'}</p>
+                  </div>
+                </div>
+
+                {/* CATEGORY & TAGS SECTION */}
+                <div className="mt-6 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50 space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Tag size={14} className="text-green-500" />
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Organize Blueprint</span>
+                  </div>
+
+                  <div className="flex items-center space-x-4">
+                    <div className="flex-1">
+                      <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1 block">Category</label>
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value as BlueprintCategory)}
+                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-green-500/30"
+                      >
+                        <option value="quote">Quote</option>
+                        <option value="infographic">Infographic</option>
+                        <option value="product">Product</option>
+                        <option value="story">Story</option>
+                        <option value="carousel">Carousel</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1 block">Tags</label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        placeholder="Add tag (e.g., promo, sale)"
+                        value={tagInput}
+                        onChange={(e) => setTagInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                        className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-green-500/30"
+                      />
+                      <button
+                        onClick={addTag}
+                        className="px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-500 rounded-xl text-xs font-bold hover:bg-green-500/20 transition-all"
+                      >
+                        Add
+                      </button>
+                    </div>
+                    {tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {tags.map(tag => (
+                          <span key={tag} className="inline-flex items-center space-x-1 px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold">
+                            <span>#{tag}</span>
+                            <button onClick={() => removeTag(tag)} className="text-slate-400 hover:text-red-400">
+                              <XCircle size={12} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 

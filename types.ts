@@ -1,6 +1,20 @@
 
-export type AspectRatio = '1:1' | '9:16' | '16:9' | '4:3' | '3:4';
+export type AspectRatio = '1:1' | '9:16' | '16:9' | '4:3' | '3:4' | '4:5';
 export type CharacterArtStyle = 'original' | 'plushy' | 'pixel_art' | 'chibi' | 'animated' | 'futuristic_robot' | 'claymorphism';
+export type BlueprintCategory = 'quote' | 'infographic' | 'product' | 'story' | 'carousel' | 'other';
+
+// Preset: A saved combination of Blueprint + Brand + Character + Settings
+export interface Preset {
+  id: string;
+  name: string;
+  blueprintId: string;
+  brandId?: string;
+  characterId?: string;
+  aspectRatio?: AspectRatio;
+  intensity?: RemixIntensity;
+  themeMode?: 'light' | 'dark' | 'auto';
+  createdAt: number;
+}
 
 
 declare global {
@@ -83,6 +97,16 @@ export interface GeneratedCarousel {
   createdAt: number;
 }
 
+// Planned slide for batch carousel generation
+export interface PlannedSlide {
+  slideNumber: number;
+  copyBrief: string;
+  visualContext: string;
+  poseInstruction?: string | null;
+  status: 'pending' | 'generating' | 'done' | 'error';
+  generatedImage?: string;
+}
+
 export interface PromptData {
   text: string;
   images: string[];
@@ -107,10 +131,36 @@ export interface GeneratedPost {
   createdAt: number;
 }
 
+export interface FeedPreviewProfile {
+  handle: string;
+  displayName: string;
+  bio: string;
+  website: string;
+  avatarDataUrl?: string;
+  igTheme?: 'light' | 'dark';
+}
+
+// Instagram-style profile feed preview (client-side drafting)
+export interface FeedPreviewState {
+  version: 1;
+  profile: FeedPreviewProfile;
+  postIds: string[];
+  captions: Record<string, string>;
+  updatedAt: number;
+}
+
+export interface FeedPreviewProject {
+  id: string;
+  name: string;
+  state: FeedPreviewState;
+  createdAt: number;
+}
+
 export interface DesignReference {
   id: string;
   name: string;
   tags: string[];
+  category?: BlueprintCategory;
   imageSource: string;
   templateImage?: string;
   markdownBrief: string;
@@ -170,15 +220,31 @@ export interface AudioDNA {
 export interface AudioReference {
   id: string;
   name: string;
-  dna: AudioDNA;
+  type?: 'style' | 'clone';  // NEW: Distinguish voice types
+  dna?: AudioDNA;            // For style voices (Gemini)
+  voiceDna?: VoiceDNA;       // For cloned voices (Coqui)
   createdAt: number;
+}
+
+// Voice DNA for cloned voices (Coqui XTTS)
+export interface VoiceDNA {
+  id: string;
+  name: string;
+  created_at: number;
+  source_type: 'microphone' | 'upload';
+  source_duration_sec: number;
+  sample_rate: number;
+  model_version: string;
 }
 
 export enum AppTool {
   LANDING = 'landing',
+  STUDIO = 'studio',
+  BRAND_STUDIO = 'brand_studio',
   BUILDER = 'builder',
   LIBRARY = 'library',
   GENERATOR = 'generator',
+  FEED_PREVIEW = 'feed_preview',
   CAROUSEL_GENERATOR = 'carousel_generator',
   BRAND_LAB = 'brand_lab',
   CHARACTER_LAB = 'character_lab',
@@ -190,7 +256,7 @@ export enum AppTool {
 
 export type RemixIntensity = 'strict' | 'light' | 'heavy';
 
-export type GeminiModel = 'flash' | 'pro';
+export type GeminiModel = 'flash' | 'flash-latest' | 'pro' | 'pro-3' | 'custom';
 
 export interface ModelPreference {
   textModel: GeminiModel;

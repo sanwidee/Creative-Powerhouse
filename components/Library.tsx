@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 /* Added missing XCircle to the import list from lucide-react */
 import { Search, Tag, Trash2, ExternalLink, Download, ArrowLeft, Filter, Grid, List as ListIcon, ImageIcon, LayoutTemplate, Copy, Check, Palette, ShieldAlert, Zap, History, FileCode, Terminal, Rocket, Clock, MessageSquare, Send, Loader2, Upload, AlertCircle, Eye, XCircle, Type as TypeIcon, Target, Users, Wand2, Layers, Sparkles, Moon, Sun, Volume2 } from 'lucide-react';
-import { DesignReference, BrandReference, GeneratedPost, RetouchHistory, UsageLog, CharacterReference, GeneratedCharacterPose, GeneratedCarousel, AudioReference } from '../types';
+import { DesignReference, BrandReference, GeneratedPost, RetouchHistory, UsageLog, CharacterReference, GeneratedCharacterPose, GeneratedCarousel, AudioReference, BlueprintCategory } from '../types';
 import { refinePostImage, analyzeBrand, analyzeDesign } from '../services/geminiService';
 import AnnotationCanvas from './AnnotationCanvas';
 
@@ -39,6 +39,7 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, g
   const [selectedAudio, setSelectedAudio] = useState<AudioReference | null>(null);
   const [viewMode, setViewMode] = useState<'template' | 'brands' | 'generated' | 'carousels' | 'characters' | 'character_poses' | 'audio_voices'>('template');
   const [copied, setCopied] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<BlueprintCategory | 'all'>('all');
 
   // Retouch Studio State
   const [retouchInput, setRetouchInput] = useState('');
@@ -100,10 +101,13 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, g
     setEditingId(null);
   };
 
-  const filteredRefs = references.filter(r =>
-    r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (r.jsonSpec?.structural_rules?.aesthetic_motifs || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRefs = references.filter(r => {
+    const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (r.jsonSpec?.structural_rules?.aesthetic_motifs || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (r.tags || []).some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesCategory = categoryFilter === 'all' || r.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
 
   const filteredPosts = generatedPosts.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -231,6 +235,31 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, g
         </div>
       </div>
 
+      {/* CATEGORY FILTER CHIPS (Only show in Blueprints view) */}
+      {viewMode === 'template' && (
+        <div className="flex items-center space-x-2 mb-6 overflow-x-auto pb-2 no-scrollbar">
+          <div className="flex items-center space-x-2 text-slate-500 mr-2">
+            <Filter size={14} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Category</span>
+          </div>
+          {(['all', 'quote', 'infographic', 'product', 'story', 'carousel', 'other'] as const).map(cat => (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(cat)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${categoryFilter === cat
+                ? 'bg-blue-500 text-white shadow-lg'
+                : 'bg-white dark:bg-slate-800/50 text-slate-500 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700'
+                }`}
+            >
+              {cat === 'all' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1)}
+            </button>
+          ))}
+          {categoryFilter !== 'all' && (
+            <span className="text-[10px] text-blue-400 font-bold ml-2">{filteredRefs.length} found</span>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
         {viewMode === 'generated' && (
           filteredPosts.length === 0 ? <EmptyState icon={<Rocket size={64} />} label="No generated content yet." /> :
@@ -327,7 +356,21 @@ const Library: React.FC<LibraryProps> = ({ references, brands, generatedPosts, g
               <div key={ref.id} onClick={() => setSelectedRef(ref)} className="group rounded-[2.5rem] border border-slate-800 bg-slate-900/40 overflow-hidden hover:border-blue-500/40 transition-all cursor-pointer relative flex flex-col">
                 <div className="aspect-[4/5] bg-black">
                   <img src={ref.imageSource} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt={ref.name} />
-                  <div className="absolute top-4 right-4"><span className={`px-2 py-1 rounded-md text-[8px] font-bold border uppercase ${ref.jsonSpec.blueprint_type === 'carousel' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>{ref.jsonSpec.blueprint_type || 'Headline'} BP</span></div>
+                  <div className="absolute top-4 left-4 right-4 flex items-start justify-between">
+                    <div className="flex flex-wrap gap-1">
+                      {ref.category && (
+                        <span className="px-2 py-1 rounded-md text-[8px] font-bold border uppercase bg-green-500/20 text-green-400 border-green-500/30">
+                          {ref.category}
+                        </span>
+                      )}
+                      {(ref.tags || []).slice(0, 2).map(tag => (
+                        <span key={tag} className="px-2 py-1 rounded-md text-[8px] font-bold border bg-slate-500/20 text-slate-400 border-slate-500/30">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                    <span className={`px-2 py-1 rounded-md text-[8px] font-bold border uppercase ${ref.jsonSpec.blueprint_type === 'carousel' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>{ref.jsonSpec.blueprint_type || 'Headline'} BP</span>
+                  </div>
                   <div className="absolute bottom-4 right-4 flex space-x-2">
                     <button onClick={(e) => handleRefreshDNA('ref', ref, e)} className={`p-2 rounded-lg bg-black/50 backdrop-blur-md text-slate-400 hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-all ${refreshingId === ref.id ? 'animate-spin text-blue-500 opacity-100' : ''} ${!ref.jsonSpec.structural_rules.dark_theme_adaptation && !refreshingId ? 'text-blue-400 opacity-100 animate-pulse' : ''}`} disabled={!!refreshingId} title="Refresh DNA (Get Theme Rules)">
                       {refreshingId === ref.id ? <Loader2 size={14} /> : <Sparkles size={14} />}

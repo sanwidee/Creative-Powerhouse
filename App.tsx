@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Wrench, Star, Rocket, Terminal, Github, Moon, Sun, Zap, Palette, ChevronRight, Key, Globe, Settings as SettingsIcon, Users, Wand2, Leaf, Layers, Volume2, BookOpen } from 'lucide-react';
-import { AppTool, DesignReference, BrandReference, GeneratedPost, CharacterReference, GeneratedCharacterPose, AudioReference } from './types';
+import { Wrench, Star, Rocket, Terminal, Github, Moon, Sun, Zap, Palette, ChevronRight, Key, Globe, Settings as SettingsIcon, Users, Wand2, Leaf, Layers, Volume2, BookOpen, Briefcase, Grid3X3, LayoutTemplate } from 'lucide-react';
+import { AppTool, DesignReference, BrandReference, GeneratedPost, CharacterReference, GeneratedCharacterPose, AudioReference, Preset, FeedPreviewProject, FeedPreviewState } from './types';
 import Builder from './components/Builder';
 import Library from './components/Library';
 import Generator from './components/Generator';
@@ -13,10 +13,42 @@ import Settings from './components/Settings';
 import AssistantHub from './components/AssistantHub';
 import AudioLab from './components/AudioLab';
 import Documentation from './components/Documentation';
+import BrandStudio from './components/BrandStudio';
+import FeedPreview from './components/FeedPreview';
+import Studio from './components/Studio';
 
 
 // Branding Assets
 const LOGO_SRC = "./logo.png";
+
+const createDefaultFeedPreview = (): FeedPreviewState => ({
+  version: 1,
+  profile: {
+    handle: 'qlipper.ai',
+    displayName: 'Qlipper AI',
+    bio: 'Draft your Instagram grid using generated posts.\nKeep the feed consistent. Keep the cadence steady.',
+    website: 'https://qlipper.ai',
+    igTheme: 'light',
+  },
+  postIds: [],
+  captions: {},
+  updatedAt: Date.now(),
+});
+
+const createFeedPreviewProject = (name: string, state?: FeedPreviewState): FeedPreviewProject => ({
+  id: `feed_${Date.now()}`,
+  name,
+  createdAt: Date.now(),
+  state: state || {
+    ...createDefaultFeedPreview(),
+    profile: {
+      ...createDefaultFeedPreview().profile,
+      handle: name,
+      displayName: name,
+      website: name.includes('.') ? `https://${name}` : '',
+    },
+  },
+});
 
 const App: React.FC = () => {
   const [activeTool, setActiveTool] = useState<AppTool>(AppTool.LANDING);
@@ -27,6 +59,12 @@ const App: React.FC = () => {
   const [characterPoses, setCharacterPoses] = useState<GeneratedCharacterPose[]>([]);
   const [generatedCarousels, setGeneratedCarousels] = useState<any[]>([]);
   const [audioVoices, setAudioVoices] = useState<AudioReference[]>([]);
+  const [presets, setPresets] = useState<Preset[]>([]);
+  const [feedPreviews, setFeedPreviews] = useState<FeedPreviewProject[]>([]);
+  const [activeFeedPreviewId, setActiveFeedPreviewId] = useState<string>(() => {
+    if (typeof localStorage === 'undefined') return '';
+    return localStorage.getItem('ikhsan_active_feed_preview') || '';
+  });
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [manualKey, setManualKey] = useState('');
   const [isStandalone, setIsStandalone] = useState(false);
@@ -61,7 +99,7 @@ const App: React.FC = () => {
       } else {
         setIsStandalone(true);
         const envKey = import.meta.env.VITE_GEMINI_API_KEY;
-        const savedKey = sessionStorage.getItem('IKHSAN_LAB_KEY');
+        const savedKey = localStorage.getItem('IKHSAN_LAB_KEY');
         setHasKey(!!(envKey || savedKey));
       }
     };
@@ -87,6 +125,30 @@ const App: React.FC = () => {
         const remoteChars = await fetchCollection('characters');
         const remoteCharPoses = await fetchCollection('character_poses');
         const remoteVoices = await fetchCollection('audio_voices');
+        const remotePresets = await fetchCollection('presets');
+        const remoteFeedPreviewsRaw = await fetchCollection('feed_previews');
+
+        let remoteFeedPreviews: FeedPreviewProject[] = Array.isArray(remoteFeedPreviewsRaw)
+          ? (remoteFeedPreviewsRaw as any[]).filter((p) => p && typeof p === 'object' && typeof p.id === 'string' && typeof p.name === 'string' && p.state && typeof p.state === 'object') as FeedPreviewProject[]
+          : [];
+
+        // Back-compat: migrate legacy single-object feed_preview -> feed_previews
+        if (remoteFeedPreviews.length === 0) {
+          try {
+            const res = await fetch('/api/feed_preview');
+            if (res.ok) {
+              const legacy = await res.json();
+              if (legacy && typeof legacy === 'object' && Array.isArray((legacy as any).postIds) && (legacy as any).profile) {
+                const legacyState = legacy as FeedPreviewState;
+                const legacyName = (legacyState.profile?.handle || 'Default Feed').trim() || 'Default Feed';
+                remoteFeedPreviews = [createFeedPreviewProject(legacyName, legacyState)];
+                await saveData('feed_previews', remoteFeedPreviews);
+              }
+            }
+          } catch (e) {
+            // Ignore; we'll fall back to defaults
+          }
+        }
 
         // Migration Check
         const localRefs = localStorage.getItem('ikhsan_design_refs');
@@ -107,6 +169,8 @@ const App: React.FC = () => {
           setBrands(migratedBrands);
           setGeneratedPosts(migratedPosts);
           setGeneratedCarousels(remoteCarousels);
+          if (remoteFeedPreviews.length === 0) remoteFeedPreviews = [createFeedPreviewProject('qlipper.ai')];
+          setFeedPreviews(remoteFeedPreviews);
 
           localStorage.removeItem('ikhsan_design_refs');
           localStorage.removeItem('ikhsan_brand_refs');
@@ -117,12 +181,24 @@ const App: React.FC = () => {
           setBrands(remoteBrands);
           setGeneratedPosts(remotePosts);
           setGeneratedCarousels(remoteCarousels);
+          if (remoteFeedPreviews.length === 0) remoteFeedPreviews = [createFeedPreviewProject('qlipper.ai')];
+          setFeedPreviews(remoteFeedPreviews);
+        }
+
+        // Active feed preview selection (persisted locally)
+        const storedActive = localStorage.getItem('ikhsan_active_feed_preview') || '';
+        const firstId = remoteFeedPreviews[0]?.id || '';
+        const nextActive = remoteFeedPreviews.some((p) => p.id === storedActive) ? storedActive : firstId;
+        if (nextActive) {
+          setActiveFeedPreviewId(nextActive);
+          localStorage.setItem('ikhsan_active_feed_preview', nextActive);
         }
 
         setCharacters(remoteChars);
         setCharacters(remoteChars);
         setCharacterPoses(remoteCharPoses);
         setAudioVoices(remoteVoices);
+        setPresets(remotePresets);
       } catch (err) {
         console.error("Critical failure in loadData:", err);
       }
@@ -133,7 +209,7 @@ const App: React.FC = () => {
   const handleOpenKey = async () => {
     if (isStandalone) {
       if (manualKey.trim().length > 20) {
-        sessionStorage.setItem('IKHSAN_LAB_KEY', manualKey.trim());
+        localStorage.setItem('IKHSAN_LAB_KEY', manualKey.trim());
         setHasKey(true);
       }
     } else {
@@ -262,6 +338,57 @@ const App: React.FC = () => {
     saveData('audio_voices', updated);
   };
 
+  const savePreset = (preset: Preset) => {
+    const updated = [preset, ...presets];
+    setPresets(updated);
+    saveData('presets', updated);
+  };
+
+  const deletePreset = (id: string) => {
+    const updated = presets.filter(p => p.id !== id);
+    setPresets(updated);
+    saveData('presets', updated);
+  };
+
+  const persistFeedPreviews = (updated: FeedPreviewProject[]) => {
+    setFeedPreviews(updated);
+    saveData('feed_previews', updated);
+  };
+
+  const selectFeedPreviewProject = (id: string) => {
+    setActiveFeedPreviewId(id);
+    localStorage.setItem('ikhsan_active_feed_preview', id);
+  };
+
+  const createFeedPreview = (name?: string) => {
+    const project = createFeedPreviewProject((name || 'new.account').trim() || 'new.account');
+    const updated = [project, ...feedPreviews];
+    persistFeedPreviews(updated);
+    selectFeedPreviewProject(project.id);
+  };
+
+  const renameFeedPreview = (id: string, name: string) => {
+    const nextName = name.trim();
+    if (!nextName) return;
+    const updated = feedPreviews.map((p) => (p.id === id ? { ...p, name: nextName } : p));
+    persistFeedPreviews(updated);
+  };
+
+  const deleteFeedPreview = (id: string) => {
+    if (feedPreviews.length <= 1) return;
+    const updated = feedPreviews.filter((p) => p.id !== id);
+    persistFeedPreviews(updated);
+    if (activeFeedPreviewId === id) {
+      const nextId = updated[0]?.id;
+      if (nextId) selectFeedPreviewProject(nextId);
+    }
+  };
+
+  const updateFeedPreviewState = (id: string, next: FeedPreviewState) => {
+    const updated = feedPreviews.map((p) => (p.id === id ? { ...p, state: next } : p));
+    persistFeedPreviews(updated);
+  };
+
   if (hasKey === false) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center p-6 text-center">
@@ -287,7 +414,7 @@ const App: React.FC = () => {
                 value={manualKey}
                 onChange={(e) => setManualKey(e.target.value)}
               />
-              <p className="text-[10px] text-slate-500 italic">Key is stored in sessionStorage and never sent to our servers.</p>
+              <p className="text-[10px] text-slate-500 italic">Key is saved locally in your browser and persists across sessions. Never sent to our servers.</p>
             </div>
           ) : (
             <div className="mb-8">
@@ -324,6 +451,8 @@ const App: React.FC = () => {
     switch (activeTool) {
       case AppTool.BUILDER:
         return <Builder onSave={saveReference} onBack={() => setActiveTool(AppTool.LANDING)} />;
+      case AppTool.STUDIO:
+        return <Studio onSavePost={saveGeneratedPost} onBack={() => setActiveTool(AppTool.LANDING)} />;
       case AppTool.LIBRARY:
         return (
           <Library
@@ -354,7 +483,24 @@ const App: React.FC = () => {
             references={references}
             brands={brands}
             characters={characters}
+            presets={presets}
             onSavePost={saveGeneratedPost}
+            onSavePreset={savePreset}
+            onDeletePreset={deletePreset}
+            onBack={() => setActiveTool(AppTool.LANDING)}
+          />
+        );
+      case AppTool.FEED_PREVIEW:
+        return (
+          <FeedPreview
+            generatedPosts={generatedPosts}
+            projects={feedPreviews.length ? feedPreviews : [createFeedPreviewProject('qlipper.ai')]}
+            activeProjectId={activeFeedPreviewId || (feedPreviews[0]?.id || '')}
+            onSelectProject={selectFeedPreviewProject}
+            onCreateProject={createFeedPreview}
+            onDeleteProject={deleteFeedPreview}
+            onRenameProject={renameFeedPreview}
+            onUpdateProjectState={updateFeedPreviewState}
             onBack={() => setActiveTool(AppTool.LANDING)}
           />
         );
@@ -364,7 +510,20 @@ const App: React.FC = () => {
             references={references}
             brands={brands}
             characters={characters}
+            presets={presets}
             onSave={saveGeneratedCarousel}
+            onSavePreset={savePreset}
+            onDeletePreset={deletePreset}
+            onBack={() => setActiveTool(AppTool.LANDING)}
+          />
+        );
+      case AppTool.BRAND_STUDIO:
+        return (
+          <BrandStudio
+            brands={brands}
+            references={references}
+            generatedPosts={generatedPosts}
+            onSavePost={saveGeneratedPost}
             onBack={() => setActiveTool(AppTool.LANDING)}
           />
         );
@@ -379,9 +538,9 @@ const App: React.FC = () => {
       case AppTool.SETTINGS:
         return (
           <Settings
-            currentKey={sessionStorage.getItem('IKHSAN_LAB_KEY') || manualKey || ''}
+            currentKey={localStorage.getItem('IKHSAN_LAB_KEY') || manualKey || ''}
             onUpdateKey={(key) => {
-              sessionStorage.setItem('IKHSAN_LAB_KEY', key);
+              localStorage.setItem('IKHSAN_LAB_KEY', key);
               setManualKey(key);
               setHasKey(true);
             }}
@@ -411,11 +570,14 @@ const App: React.FC = () => {
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <ToolCard icon={<LayoutTemplate className="text-pink-400" />} title="Studio" desc="Programmable templates. Pixel-perfect output." onClick={() => setActiveTool(AppTool.STUDIO)} accent="pink" />
+              <ToolCard icon={<Briefcase className="text-orange-400" />} title="Brand Studio" desc="Campaign Hub. Asset → Post at scale." onClick={() => setActiveTool(AppTool.BRAND_STUDIO)} accent="orange" />
               <ToolCard icon={<Wrench className="text-blue-400" />} title="Design Builder" desc="Extract Structural DNA." onClick={() => setActiveTool(AppTool.BUILDER)} accent="blue" />
               <ToolCard icon={<Palette className="text-pink-400" />} title="Brand Identity" desc="Save Color DNA." onClick={() => setActiveTool(AppTool.BRAND_LAB)} accent="pink" />
               <ToolCard icon={<Users className="text-green-400" />} title="Character Lab" desc="Extract Character DNA." onClick={() => setActiveTool(AppTool.CHARACTER_LAB)} accent="green" />
               <ToolCard icon={<Star className="text-cyan-400" />} title="My Files" desc="Manage Results." onClick={() => setActiveTool(AppTool.LIBRARY)} accent="cyan" />
               <ToolCard icon={<Rocket className="text-indigo-400" />} title="Post Generator" desc="Deploy & Remix." onClick={() => setActiveTool(AppTool.GENERATOR)} accent="indigo" />
+              <ToolCard icon={<Grid3X3 className="text-pink-400" />} title="Feed Preview" desc="Mock your Instagram grid." onClick={() => setActiveTool(AppTool.FEED_PREVIEW)} accent="pink" />
               <ToolCard icon={<Layers className="text-blue-400" />} title="Carousel Generator" desc="Multiple Slides." onClick={() => setActiveTool(AppTool.CAROUSEL_GENERATOR)} accent="blue" />
               <ToolCard icon={<Wand2 className="text-purple-400" />} title="Character Studio" desc="Generate Poses." onClick={() => setActiveTool(AppTool.CHARACTER_STUDIO)} accent="purple" />
               <ToolCard icon={<Volume2 className="text-pink-400" />} title="Audio Lab" desc="Synthesize Voice." onClick={() => setActiveTool(AppTool.AUDIO_LAB)} accent="pink" />
@@ -426,13 +588,16 @@ const App: React.FC = () => {
   };
 
   const menuItems = [
+    { tool: AppTool.STUDIO, icon: <LayoutTemplate size={20} />, label: "Studio", color: "pink" },
+    { tool: AppTool.BRAND_STUDIO, icon: <Briefcase size={20} />, label: "Brand Studio", color: "orange" },
     { tool: AppTool.BUILDER, icon: <Wrench size={20} />, label: "Builder", color: "blue" },
     { tool: AppTool.BRAND_LAB, icon: <Palette size={20} />, label: "Brand Lab", color: "pink" },
     { tool: AppTool.CHARACTER_LAB, icon: <Users size={20} />, label: "Char Lab", color: "green" },
     { tool: AppTool.LIBRARY, icon: <Star size={20} />, label: "My Files", color: "cyan" },
     { tool: AppTool.GENERATOR, icon: <Rocket size={20} />, label: "Generator", color: "indigo" },
+    { tool: AppTool.FEED_PREVIEW, icon: <Grid3X3 size={20} />, label: "Feed", color: "pink" },
     { tool: AppTool.CAROUSEL_GENERATOR, icon: <Layers size={20} />, label: "Carousels", color: "blue" },
-    { tool: AppTool.CHARACTER_STUDIO, icon: <Wand2 size={20} />, label: "Studio", color: "purple" },
+    { tool: AppTool.CHARACTER_STUDIO, icon: <Wand2 size={20} />, label: "Char Studio", color: "purple" },
     { tool: AppTool.AUDIO_LAB, icon: <Volume2 size={20} />, label: "Audio", color: "pink" },
   ];
 

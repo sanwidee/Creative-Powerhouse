@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
-import { DesignPromptJson, ContentBrief, BrandDNA, AspectRatio, UsageLog, CharacterDNA, CharacterArtStyle, PromptData, GeminiModel, ModelPreference, AudioDNA } from "../types";
+import { DesignPromptJson, ContentBrief, BrandDNA, AspectRatio, UsageLog, CharacterDNA, CharacterArtStyle, PromptData, GeminiModel, ModelPreference, AudioDNA, PlannedSlide } from "../types";
 
 
 const PRICING = {
@@ -49,16 +49,69 @@ export const recordUsage = async (
   return log;
 };
 
+export interface GeminiModelInfo {
+  name: string;          // e.g. "models/gemini-2.0-flash"
+  displayName: string;
+  description?: string;
+  supportedGenerationMethods: string[];
+}
+
+export const listAvailableModels = async (): Promise<GeminiModelInfo[]> => {
+  const key = localStorage.getItem('IKHSAN_LAB_KEY') || import.meta.env.VITE_GEMINI_API_KEY;
+  if (!key) throw new Error("No API key configured.");
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=${key}`
+  );
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'Failed to list models');
+  return (data.models || []) as GeminiModelInfo[];
+};
+
 const getAI = () => {
-  // Priority 1: Session Storage (Manual Override in UI)
+  // Priority 1: localStorage (persists across sessions, set via UI Settings)
   // Priority 2: Vite Environment variable (Local Dev .env)
-  const key = sessionStorage.getItem('IKHSAN_LAB_KEY') || import.meta.env.VITE_GEMINI_API_KEY;
+  const key = localStorage.getItem('IKHSAN_LAB_KEY') || import.meta.env.VITE_GEMINI_API_KEY;
 
   if (!key) {
-    throw new Error("No API Key found. Please configure your key in settings or .env file.");
+    throw new Error("No API Key found. Please configure your key in Settings.");
   }
 
   return new GoogleGenAI({ apiKey: key });
+};
+
+// Builds the right generation config for a given model.
+// Dedicated image-gen models (e.g. gemini-*-image-*) support imageConfig.aspectRatio.
+// Flash/multimodal models do NOT support imageConfig — they use responseModalities instead,
+// and the aspect ratio is conveyed via text prompt (all prompt builders already include it).
+const buildImageConfig = (modelName: string, ratio: AspectRatio): Record<string, any> => {
+  if (modelName.includes('-image-') || modelName.includes('imagen')) {
+    return { imageConfig: { aspectRatio: ratio } };
+  }
+  return { responseModalities: ['image'] };
+};
+
+const MODEL_MAP = {
+  flash: {
+    text: 'gemini-2.5-flash',
+    image: 'gemini-2.5-flash-image'
+  },
+  'flash-latest': {
+    text: 'gemini-2.5-flash',
+    image: 'gemini-2.5-flash-image'
+  },
+  pro: {
+    text: 'gemini-2.5-pro',
+    image: 'gemini-2.5-flash-image'
+  },
+  'pro-3': {
+    text: 'gemini-2.5-pro',
+    image: 'gemini-2.5-flash-image'
+  },
+  custom: {
+    get text() { return localStorage.getItem('ikhsan_model_text') || 'gemini-2.5-flash'; },
+    get image() { return localStorage.getItem('ikhsan_model_image') || 'gemini-2.5-flash-image'; }
+  }
 };
 
 const extractJsonFromText = (text: string): string => {
@@ -68,6 +121,83 @@ const extractJsonFromText = (text: string): string => {
     return text.substring(firstBrace, lastBrace + 1);
   }
   return text.trim();
+};
+
+// Carousel Batch Planning - AI breaks down a single brief into per-slide content
+export const planCarouselContent = async (
+  blueprintSpec: DesignPromptJson,
+  brief: string,
+  slideCount: number,
+  brandDNA?: BrandDNA,
+  characterDNA?: CharacterDNA
+): Promise<{ slides: PlannedSlide[], usage: UsageLog }> => {
+  const ai = getAI();
+
+  const brandContext = brandDNA
+    ? `Brand: "${brandDNA.brand_name}" with vibe: ${brandDNA.brand_vibe}`
+    : "No specific brand guidelines.";
+
+  const characterContext = characterDNA
+    ? `Character/Mascot: "${characterDNA.character_name}" - ${characterDNA.physical_features}`
+    : "No character/mascot to include.";
+
+  const prompt = `You are a Content Strategist for social media carousels.
+
+TASK: Break down this carousel brief into ${slideCount} individual slides.
+
+CAROUSEL BRIEF: "${brief}"
+
+BLUEPRINT TYPE: ${blueprintSpec.template_name} (${blueprintSpec.structural_rules.layout_archetype})
+
+CONTEXT:
+- ${brandContext}
+- ${characterContext}
+
+OUTPUT REQUIREMENTS:
+For each slide, provide:
+1. copyBrief: The main text/headline for this slide (1-2 sentences max)
+2. visualContext: What should be visually emphasized on this slide
+3. poseInstruction: ${characterDNA ? "REQUIRED - describe the character's pose, action, expression, or scene. Each slide should have a DIFFERENT pose that matches the slide's message. Be specific: 'waving hello', 'pointing at text', 'sitting and thinking', 'jumping with excitement', 'holding a sign', etc." : "null (no character)"}
+
+CAROUSEL STRUCTURE BEST PRACTICES:
+- Slide 1: Hook/attention-grabber (character could be waving, gesturing 'stop', or looking curious)
+- Middle slides: Core content points (character demonstrates, points, or reacts to content)
+- Last slide: CTA or conclusion (character could be thumbs up, waving goodbye, or celebratory)
+
+Return ONLY a JSON array with exactly ${slideCount} objects:
+[
+  { "slideNumber": 1, "copyBrief": "...", "visualContext": "...", "poseInstruction": "..." },
+  { "slideNumber": 2, "copyBrief": "...", "visualContext": "...", "poseInstruction": "..." }
+]`;
+
+  const textModel = MODEL_MAP.flash.text;
+  const response = await ai.models.generateContent({
+    model: textModel,
+    contents: { parts: [{ text: prompt }] },
+    config: { responseMimeType: "application/json" }
+  });
+
+  const text = response.text || '';
+  if (!text.trim()) throw new Error("No response from carousel planner.");
+
+  try {
+    // Handle both array and object with slides property
+    let parsed = JSON.parse(text.trim());
+    let slidesArray: any[] = Array.isArray(parsed) ? parsed : (parsed.slides || []);
+
+    const slides: PlannedSlide[] = slidesArray.map((s: any, index: number) => ({
+      slideNumber: s.slideNumber || index + 1,
+      copyBrief: s.copyBrief || '',
+      visualContext: s.visualContext || '',
+      poseInstruction: s.poseInstruction || null,
+      status: 'pending' as const
+    }));
+
+    const usageLog = await recordUsage('Post Generator', textModel, response);
+    return { slides, usage: usageLog };
+  } catch (e) {
+    throw new Error("Carousel planner returned invalid JSON format.");
+  }
 };
 
 export const analyzeDesign = async (imageB64: string, userNotes?: string): Promise<{ markdown: string, json: DesignPromptJson, usage: UsageLog }> => {
@@ -120,8 +250,9 @@ export const analyzeDesign = async (imageB64: string, userNotes?: string): Promi
   
   IMPORTANT: The 'has_character_slot' should be TRUE if there is a mascot/person.` };
 
+  const textModel = MODEL_MAP.flash.text;
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: textModel,
     contents: { parts: [imagePart, textPart] },
   });
 
@@ -157,7 +288,7 @@ export const analyzeDesign = async (imageB64: string, userNotes?: string): Promi
     // Legacy cleanup
     jsonData.base_visual_dna_prompt = "IGNORE THIS FIELD. VISUAL ANCHOR ACTIVE.";
 
-    const usageLog = await recordUsage('Design Builder DNA', 'gemini-3-flash-preview', response);
+    const usageLog = await recordUsage('Design Builder DNA', textModel, response);
     return { markdown: markdown.trim(), json: jsonData, usage: usageLog };
   } catch (e) {
     throw new Error("DNA Sequence Error: The system failed to parse the structural logic.");
@@ -178,8 +309,9 @@ export const analyzeBrand = async (imageB64: string): Promise<{ dna: BrandDNA, u
     "light_mode_colors": ["hex codes for light theme backgrounds/accents"]
   }`;
 
+  const textModel = MODEL_MAP.flash.text;
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: textModel,
     contents: { parts: [{ inlineData: { mimeType: 'image/jpeg', data: imageB64.split(',')[1] || imageB64 } }, { text: prompt }] },
     config: { responseMimeType: "application/json" }
   });
@@ -188,47 +320,37 @@ export const analyzeBrand = async (imageB64: string): Promise<{ dna: BrandDNA, u
   if (!text.trim()) throw new Error("No response from Brand Lab.");
 
   try {
-    const usageLog = await recordUsage('Brand Lab', 'gemini-3-flash-preview', response);
+    const usageLog = await recordUsage('Brand Lab', textModel, response);
     return { dna: JSON.parse(extractJsonFromText(text)), usage: usageLog };
   } catch (e) {
     throw new Error("Brand Lab returned invalid JSON format.");
   }
 };
 
-export const generateTemplateImage = async (jsonSpec: DesignPromptJson, ratio: AspectRatio): Promise<{ image: string, usage: UsageLog }> => {
+export const generateTemplateImage = async (jsonSpec: DesignPromptJson, ratio: AspectRatio, modelType: GeminiModel = 'flash'): Promise<{ image: string, usage: UsageLog }> => {
   const ai = getAI();
+  const modelName = MODEL_MAP[modelType].image;
   const templatePrompt = `Create a high-fidelity design mockup.
-  The layout is a ${jsonSpec.structural_rules.layout_archetype}. 
-  Element placement: ${jsonSpec.structural_rules.composition_map}. 
+  The layout is a ${jsonSpec.structural_rules.layout_archetype}.
+  Element placement: ${jsonSpec.structural_rules.composition_map}.
   Typography vibe: ${jsonSpec.structural_rules.typography_system}.
-  Include placeholder text that says 'YOUR CONTENT HERE'. 
-  Aspect Ratio: ${ratio}. Clean, professional social media graphic.`;
+  Include placeholder text that says 'YOUR CONTENT HERE'.
+  Aspect Ratio: ${ratio}. Compose the image to fit a ${ratio} frame. Clean, professional social media graphic.`;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-image-preview',
+    model: modelName,
     contents: { parts: [{ text: templatePrompt }] },
-    config: { imageConfig: { aspectRatio: ratio } },
+    config: buildImageConfig(modelName, ratio),
   });
 
   const parts = response.candidates?.[0]?.content?.parts;
   if (!parts) throw new Error("Image generation failed.");
 
-  const usageLog = await recordUsage('Design Builder Visual', 'gemini-3-pro-image-preview', response);
+  const usageLog = await recordUsage('Design Builder Visual', modelName, response);
   for (const part of parts) {
     if (part.inlineData) return { image: `data:image/png;base64,${part.inlineData.data}`, usage: usageLog };
   }
   throw new Error("Validation render failed.");
-};
-
-const MODEL_MAP = {
-  flash: {
-    text: 'gemini-3-flash-preview',
-    image: 'gemini-3-flash-preview' // Use flash for image to save quota
-  },
-  pro: {
-    text: 'gemini-3-pro-preview', // Assuming pro text exists
-    image: 'gemini-3-pro-image-preview'
-  }
 };
 
 export const getPostPromptData = (
@@ -298,7 +420,7 @@ export const getPostPromptData = (
           ${brandContext}
           ${carouselCtx}
           
-          OUTPUT INSTRUCTION: Return a precise visual prompt description that tells the image generator to "Reproduce Image 1 exactly, but with the text changed to [New Text]".`,
+          OUTPUT INSTRUCTION: Return a brief production analysis, then the separator "---PROMPT_START---", followed by a precise visual prompt description that tells the image generator to "Reproduce Image 1 exactly, but with the text changed to [New Text]".`,
       images: [referenceImageB64]
     };
   }
@@ -355,7 +477,8 @@ export const generateRemixImage = async (
   visualPrompt: string,
   ratio: AspectRatio,
   characterDNA?: CharacterDNA,
-  modelType: GeminiModel = 'pro'
+  modelType: GeminiModel = 'flash',
+  poseContext?: string | null
 ): Promise<{ image: string, usage: UsageLog }> => {
   const ai = getAI();
   const promptData = getRemixPromptData(visualPrompt, ratio);
@@ -372,7 +495,13 @@ export const generateRemixImage = async (
         data: primaryRef.split(',')[1] || primaryRef
       }
     });
-    promptData.text = `DEPLOY CHARACTER: Use the provided reference image (Image 1) as the SOURCE OF TRUTH for the character appearance. \n\n${promptData.text}`;
+
+    // Build character deployment prompt with optional pose context
+    const poseDirective = poseContext
+      ? `\n\nCHARACTER POSE/ACTION: The character MUST be shown ${poseContext}. This is NOT optional - depict this specific pose/action while maintaining the character's identity from Image 1.`
+      : '';
+
+    promptData.text = `DEPLOY CHARACTER: Use the provided reference image (Image 1) as the SOURCE OF TRUTH for the character appearance. Match the character's face, colors, and style EXACTLY.${poseDirective}\n\n${promptData.text}`;
   }
 
   parts.push({ text: promptData.text });
@@ -380,7 +509,7 @@ export const generateRemixImage = async (
   const response = await ai.models.generateContent({
     model: modelName,
     contents: { parts },
-    config: { imageConfig: { aspectRatio: ratio } },
+    config: buildImageConfig(modelName, ratio),
   });
 
   const resParts = response.candidates?.[0]?.content?.parts;
@@ -398,9 +527,11 @@ export const refinePostImage = async (
   instruction: string,
   ratio: AspectRatio,
   refImageB64?: string,
-  isAnnotation: boolean = false
+  isAnnotation: boolean = false,
+  modelType: GeminiModel = 'flash'
 ): Promise<{ image: string, usage: UsageLog }> => {
   const ai = getAI();
+  const modelName = MODEL_MAP[modelType].image;
 
   const parts: any[] = [
     { inlineData: { mimeType: 'image/png', data: currentImageB64.split(',')[1] || currentImageB64 } }
@@ -426,28 +557,26 @@ export const refinePostImage = async (
 
   parts.push({
     text: `${baseInstruction}
-    
+
     INSTRUCTION: ${instruction}
-    
+
     ${refImageB64 ? 'Use the second image ONLY as a reference for the new element to be added, do not let it override the core layout of image 1.' : ''}
-    
+
     ${preservationDirective}
-    
-    Ratio: ${ratio}. Output the final modified image.`
+
+    Ratio: ${ratio}. Compose the output for a ${ratio} frame. Output the final modified image.`
   });
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-image-preview',
+    model: modelName,
     contents: { parts },
-    config: {
-      imageConfig: { aspectRatio: ratio },
-    }
+    config: buildImageConfig(modelName, ratio),
   });
 
   const resultParts = response.candidates?.[0]?.content?.parts;
   if (!resultParts) throw new Error("Refinement failed.");
 
-  const usageLog = await recordUsage('Production Studio', 'gemini-3-pro-image-preview', response);
+  const usageLog = await recordUsage('Production Studio', modelName, response);
   for (const part of resultParts) {
     if (part.inlineData) return { image: `data:image/png;base64,${part.inlineData.data}`, usage: usageLog };
   }
@@ -478,8 +607,9 @@ export const analyzeCharacter = async (imagesB64: string[]): Promise<{ dna: Char
     }`
   };
 
+  const textModel = MODEL_MAP.flash.text;
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: textModel,
     contents: { parts: [...imageParts, textPart] },
     config: { responseMimeType: "application/json" }
   });
@@ -490,7 +620,7 @@ export const analyzeCharacter = async (imagesB64: string[]): Promise<{ dna: Char
   try {
     const dna = JSON.parse(extractJsonFromText(text)) as CharacterDNA;
     dna.reference_images = imagesB64;
-    const usageLog = await recordUsage('Character Lab', 'gemini-3-flash-preview', response);
+    const usageLog = await recordUsage('Character Lab', textModel, response);
     return { dna, usage: usageLog };
   } catch (e) {
     throw new Error("Character Lab returned invalid JSON format.");
@@ -537,9 +667,11 @@ Aspect Ratio: ${aspectRatio}`;
 
 export const generateCharacterTurnaround = async (
   characterDNA: CharacterDNA,
-  aspectRatio: AspectRatio = '1:1'
+  aspectRatio: AspectRatio = '1:1',
+  modelType: GeminiModel = 'flash'
 ): Promise<{ image: string, usage: UsageLog }> => {
   const ai = getAI();
+  const modelName = MODEL_MAP[modelType].image;
   const promptData = getTurnaroundPromptData(characterDNA, aspectRatio);
 
   const parts: any[] = [];
@@ -556,19 +688,119 @@ export const generateCharacterTurnaround = async (
   parts.push({ text: promptData.text });
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-image-preview',
+    model: modelName,
     contents: { parts },
-    config: { imageConfig: { aspectRatio } },
+    config: buildImageConfig(modelName, aspectRatio),
   });
 
   const resultParts = response.candidates?.[0]?.content?.parts;
   if (!resultParts) throw new Error("Turnaround generation failed.");
 
-  const usageLog = await recordUsage('Character Lab', 'gemini-3-pro-image-preview', response);
+  const usageLog = await recordUsage('Character Lab', modelName, response);
   for (const part of resultParts) {
     if (part.inlineData) return { image: `data:image/png;base64,${part.inlineData.data}`, usage: usageLog };
   }
   throw new Error("Turnaround generation failed to render.");
+};
+
+export const getBrandEvolutionPromptData = (
+  characterDNA: CharacterDNA,
+  brandDNA: BrandDNA,
+  aspectRatio: AspectRatio = '16:9'
+): PromptData => {
+  // Merge brand colors into character - brand takes priority
+  const mergedPalette = [
+    ...(brandDNA.primary_colors || []),
+    ...characterDNA.color_palette.slice(0, 2) // Keep up to 2 original accent colors
+  ].slice(0, 6);
+
+  const text = `
+BRAND-ALIGNED CHARACTER EVOLUTION
+
+CHARACTER BASE IDENTITY (PRESERVE THESE):
+- Name: ${characterDNA.character_name}
+- Physical Features: ${characterDNA.physical_features}
+- Visual Details: ${characterDNA.visual_details}
+- Original Art Style: ${characterDNA.style_notes}
+
+BRAND DNA TO APPLY:
+- Brand: ${brandDNA.brand_name}
+- Brand Colors: ${brandDNA.primary_colors.join(', ')}
+- Brand Vibe: ${brandDNA.brand_vibe}
+- Color Logic: ${brandDNA.color_logic}
+- Typography Notes: ${brandDNA.typography_notes}
+
+EVOLUTION RULES:
+1. IDENTITY LOCK: The character's face, body structure, and signature features MUST remain 100% consistent with the reference image.
+2. COLOR TRANSFORMATION: Replace the character's color palette with the brand colors: ${mergedPalette.join(', ')}
+3. STYLE ADAPTATION: Infuse the brand's visual vibe (${brandDNA.brand_vibe}) into the character's aesthetic while maintaining their core identity.
+4. The character should now "belong" to this brand visually.
+
+FORBIDDEN:
+${brandDNA.forbidden_styles && brandDNA.forbidden_styles.length > 0 ? `- Do NOT use these styles: ${brandDNA.forbidden_styles.join(', ')}` : '- No specific restrictions'}
+
+OUTPUT: Generate a professional 2x4 grid turnaround reference sheet (8 views: front, back, side, 3/4 angles).
+The character should appear with the BRAND'S color scheme and visual identity while maintaining their structural identity.
+Clean background. Professional quality.
+
+Aspect Ratio: ${aspectRatio}`;
+
+  return { text, images: characterDNA.reference_images || [] };
+};
+
+export const evolveCharacterWithBrand = async (
+  characterDNA: CharacterDNA,
+  brandDNA: BrandDNA,
+  aspectRatio: AspectRatio = '16:9',
+  modelType: GeminiModel = 'flash'
+): Promise<{ image: string, evolvedDNA: CharacterDNA, usage: UsageLog }> => {
+  const ai = getAI();
+  const modelName = MODEL_MAP[modelType].image;
+  const promptData = getBrandEvolutionPromptData(characterDNA, brandDNA, aspectRatio);
+
+  const parts: any[] = [];
+  if (promptData.images.length > 0) {
+    const primaryRef = promptData.images[0];
+    parts.push({
+      inlineData: {
+        mimeType: 'image/jpeg',
+        data: primaryRef.split(',')[1] || primaryRef
+      }
+    });
+  }
+
+  parts.push({ text: promptData.text });
+
+  const response = await ai.models.generateContent({
+    model: modelName,
+    contents: { parts },
+    config: buildImageConfig(modelName, aspectRatio),
+  });
+
+  const resultParts = response.candidates?.[0]?.content?.parts;
+  if (!resultParts) throw new Error("Brand evolution generation failed.");
+
+  const usageLog = await recordUsage('Character Lab', modelName, response);
+
+  // Create evolved DNA with merged brand colors
+  const evolvedDNA: CharacterDNA = {
+    ...characterDNA,
+    color_palette: [
+      ...(brandDNA.primary_colors || []),
+      ...characterDNA.color_palette.slice(0, 2)
+    ].slice(0, 6),
+    linked_brand_id: undefined, // Will be set when saving
+    style_notes: `${characterDNA.style_notes} | Brand-aligned: ${brandDNA.brand_vibe}`
+  };
+
+  for (const part of resultParts) {
+    if (part.inlineData) {
+      const newImage = `data:image/png;base64,${part.inlineData.data}`;
+      evolvedDNA.reference_images = [newImage, ...(characterDNA.reference_images || []).slice(0, 2)];
+      return { image: newImage, evolvedDNA, usage: usageLog };
+    }
+  }
+  throw new Error("Brand evolution failed to render.");
 };
 
 export const getPosePromptData = (
@@ -622,13 +854,15 @@ export const generateCharacterPose = async (
   characterDNA: CharacterDNA,
   poseReference?: string,
   posePrompt?: string,
-  aspectRatio: AspectRatio = '1:1'
+  aspectRatio: AspectRatio = '1:1',
+  modelType: GeminiModel = 'flash'
 ): Promise<{ image: string, usage: UsageLog }> => {
   const ai = getAI();
+  const modelName = MODEL_MAP[modelType].image;
   const promptData = getPosePromptData(characterDNA, poseReference, posePrompt, aspectRatio);
 
   const parts: any[] = [];
-  promptData.images.forEach((img, idx) => {
+  promptData.images.forEach((img) => {
     parts.push({
       inlineData: { mimeType: 'image/jpeg', data: img.split(',')[1] || img }
     });
@@ -637,19 +871,91 @@ export const generateCharacterPose = async (
   parts.push({ text: promptData.text });
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-image-preview',
+    model: modelName,
     contents: { parts },
-    config: { imageConfig: { aspectRatio } },
+    config: buildImageConfig(modelName, aspectRatio),
   });
 
   const resultParts = response.candidates?.[0]?.content?.parts;
   if (!resultParts) throw new Error("Character pose generation failed.");
 
-  const usageLog = await recordUsage('Character Studio', 'gemini-3-pro-image-preview', response);
+  const usageLog = await recordUsage('Character Studio', modelName, response);
   for (const part of resultParts) {
     if (part.inlineData) return { image: `data:image/png;base64,${part.inlineData.data}`, usage: usageLog };
   }
   throw new Error("Character pose generation failed to render.");
+};
+
+// Brand Studio: compose an asset image + brief + brand DNA into a finished post.
+// The asset (e.g. a 3D icon) is the hero visual. The model applies the brand aesthetic
+// and overlays the message as a bold headline.
+export const generateFromAsset = async (
+  assetImageB64: string,
+  brief: string,
+  brandDNA: BrandDNA,
+  blueprintSpec?: DesignPromptJson | null,
+  ratio: AspectRatio = '4:5',
+  modelType: GeminiModel = 'flash'
+): Promise<{ image: string, usage: UsageLog }> => {
+  const ai = getAI();
+  const modelName = MODEL_MAP[modelType].image;
+
+  const bgGuide = brandDNA.dark_mode_colors?.length
+    ? `Background colors: ${brandDNA.dark_mode_colors.join(', ')}`
+    : `Background: near-black / very dark. Accent: ${brandDNA.primary_colors.slice(0, 2).join(', ')}.`;
+
+  const layoutGuide = blueprintSpec
+    ? `LAYOUT: ${blueprintSpec.structural_rules.layout_archetype}. ${blueprintSpec.structural_rules.composition_map}. Typography: ${blueprintSpec.structural_rules.typography_system}.`
+    : `LAYOUT: Bold headline text top-center (2-3 lines max). Hero asset center-to-bottom half. Optional CTA pill at very bottom.`;
+
+  const forbidden = brandDNA.forbidden_styles?.length
+    ? `FORBIDDEN STYLES: ${brandDNA.forbidden_styles.join(', ')}.`
+    : '';
+
+  const prompt = `BRAND POST COMPOSITION — ${brandDNA.brand_name}
+
+ASSET (Image 1): This is the hero visual. Keep it as the dominant element. Enhance it subtly with the brand's atmospheric glow and particle/ember effects to make it feel native to the brand.
+
+BRAND IDENTITY:
+- Colors: ${brandDNA.primary_colors.join(', ')}
+- Vibe: ${brandDNA.brand_vibe}
+- Style logic: ${brandDNA.color_logic}
+- ${bgGuide}
+${forbidden}
+
+CONTENT MESSAGE: "${brief}"
+
+${layoutGuide}
+
+EXECUTION RULES:
+1. Dark atmospheric background — apply the brand's dark palette with subtle texture or particle dust
+2. The asset from Image 1 is the hero visual, placed in the lower/center area with brand-matching glow
+3. Derive a bold, punchy headline (max 3 lines) from the content message — place at top with high contrast
+4. If the message has a secondary point or CTA, add it as smaller body text or a rounded pill button
+5. Typography: bold weight, clean, matches brand vibe — no decorative fonts unless on-brand
+6. Overall quality: cinematic, premium, production-ready social media post
+
+Aspect Ratio: ${ratio}. Output a complete finished post.`;
+
+  const parts: any[] = [
+    { inlineData: { mimeType: 'image/jpeg', data: assetImageB64.split(',')[1] || assetImageB64 } },
+    { text: prompt }
+  ];
+
+  const response = await ai.models.generateContent({
+    model: modelName,
+    contents: { parts },
+    config: buildImageConfig(modelName, ratio),
+  });
+
+  const resParts = response.candidates?.[0]?.content?.parts;
+  if (!resParts) throw new Error("Brand post generation failed.");
+
+  const usageLog = await recordUsage('Post Generator', modelName, response);
+  for (const part of resParts) {
+    if (part.inlineData) return { image: `data:image/png;base64,${part.inlineData.data}`, usage: usageLog };
+  }
+  throw new Error("Brand post generation produced no image.");
 };
 
 export const generateAudio = async (text: string, dna: AudioDNA): Promise<{ audioData: string, usage: UsageLog }> => {

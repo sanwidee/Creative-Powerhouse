@@ -1,49 +1,186 @@
-# Implementation Plan: Functional Wireframe DNA Strategy
+# Implementation Plan: UX Productivity Overhaul
 
 ## Goal
-Implement the "Functional Wireframe DNA" strategy to eliminate "Generation Entropy" (quality drift) in the Post Generator. This involves prioritizing the Blueprint Image as a strict "Visual Anchor" and using functional slot mapping instead of detailed aesthetic text descriptions during generation.
+
+Fundamentally improve the speed and usability of Weed Labs to make it **faster than raw ChatGPT prompting** for repetitive content creation. This involves 4 major features:
+
+1.  **Quick Mode**: Bypass library selection; paste image + type brief = instant generation.
+2.  **Preset Combos**: Save `Blueprint + Brand + Character` combos as one-click workflow presets.
+3.  **Batch Generation**: Input multiple briefs for a single blueprint, generate all with one click.
+4.  **Smart Labels/Tags**: Add categories and tags to blueprints for faster filtering.
+
+---
 
 ## User Review Required
+
 > [!IMPORTANT]
-> This change fundamentally alters how Blueprints are "seen" by the AI. Old Blueprints will still work but might benefit from being "Re-analyzed" in the Builder to populate the new strict slot registry if they lack detailed slot logic.
+> This is a significant UX overhaul. The Generator UI will look different. Please review the changes below and confirm you're happy with the scope before I begin implementation.
+
+> [!WARNING]
+> **Preset Combos** will add a new data type (`Preset`) stored in the database. Old data will not be affected, but this is new infrastructure.
+
+---
 
 ## Proposed Changes
 
-### 1. Update `types.ts`
-We need to ensure `DesignPromptJson` explicitly supports the new Functional DNA concepts.
-*   **Add** `description` to `ExtractedField` interface.
-*   **Mark** `base_visual_dna_prompt` as optional/deprecated.
-*   The `structural_rules` field will focus on *constraints* (what NOT to do) rather than *description*.
+### 1. Data Layer
 
-### 2. Update `components/Library.tsx` (Migration UI)
-*   **Modify** the "Refresh/Upgrade" button logic.
-*   **Logic**: If `jsonSpec.base_visual_dna_prompt` does NOT contain the flag string "IGNORE THIS FIELD", identify it as a "Legacy Blueprint".
-*   **UI Reference**: Display a "⚠ Upgrade DNA" badge for Legacy Blueprints to prompt the user to re-analyze them with the new Functional Wireframe logic.
+#### [MODIFY] [types.ts](file:///Users/sanwidi/Desktop/1.Project/Creative%20Powerhouse/types.ts)
 
-### 3. Update `services/geminiService.ts`
+*   **Add `Preset` interface**:
+    ```typescript
+    export interface Preset {
+      id: string;
+      name: string;
+      blueprintId: string;
+      brandId?: string;
+      characterId?: string;
+      aspectRatio?: AspectRatio;
+      intensity?: RemixIntensity;
+      themeMode?: 'light' | 'dark' | 'auto';
+      createdAt: number;
+    }
+    ```
+*   **Add `category` and `tags` fields to `DesignReference`**:
+    ```typescript
+    // Inside DesignReference
+    category?: 'quote' | 'infographic' | 'product' | 'story' | 'carousel' | 'other';
+    tags?: string[];
+    ```
 
-#### A. Modify `analyzeDesign` (Builder)
-*   **Prompt Update**: Change the analysis prompt to focus less on "flowery aesthetic descriptions" and more on "Logic & Structure".
-*   **Prompt Directive**: "Extract a functional slot registry. Identify EVERY text block. Do not analyze the 'vibe' for reproduction purposes, only for classification."
-*   **Output**: Ensure `base_visual_dna_prompt` follows the new format "IGNORE THIS FIELD...".
+---
 
-#### B. Modify `generatePostFromReference` (Generator)
-*   **Strategy Shift**: Implement the "Visual Anchor + Functional Logic" strategy.
-*   **Prompt Construction**: 
-    *   **IF** `referenceImageB64` is provided (Visual Anchor):
-        *   Directive: "VISUAL REFERENCE: Use the provided image (Image 1) as the STRUCTURAL and AESTHETIC SOURCE OF TRUTH. Mimic its layout, spacing, and vibe exactly."
-        *   **CRITICAL**: Do NOT inject `reference.base_visual_dna_prompt` or `structural_rules.aesthetic_motifs` into the prompt. This removes the "Text Noise" that causes drift.
-        *   **Logic Injection**: Iterate through `content_registry` or `brief.structured_content` to create explicit replace instructions:
-            *   "In Image 1, there is text at [Location described by AI]. Replace it with: '[New Text]'. Keep font/color exactly the same."
+#### [MODIFY] [App.tsx](file:///Users/sanwidi/Desktop/1.Project/Creative%20Powerhouse/App.tsx)
+
+*   **State Management**: Add `presets` state array.
+*   **API Integration**: Add `savePreset`, `deletePreset` functions that persist to `/api/presets`.
+*   **Props Passing**: Pass `presets`, `onSavePreset`, `onDeletePreset` down to `Generator.tsx` and `CarouselGenerator.tsx`.
+
+---
+
+### 2. Generator Overhaul
+
+#### [MODIFY] [Generator.tsx](file:///Users/sanwidi/Desktop/1.Project/Creative%20Powerhouse/components/Generator.tsx)
+
+This is the **core change**. The UI will gain two new modes:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  [ QUICK ]  [ LIBRARY ]  [ BATCH ]           ← Mode Tabs   │
+├─────────────────────────────────────────────────────────────┤
+│  (Content changes based on active mode)                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**A. Quick Mode (New Section)**
+*   Add a toggle or tab at the top: `Quick | Library | Batch`.
+*   In Quick Mode:
+    *   Hide the Blueprint/Brand/Character picker carousels.
+    *   Show:
+        *   `[Paste Image Dropzone]` → Calls `analyzeDesign()` on-the-fly when image is dropped.
+        *   `[Brief Textarea]` → For the generation prompt.
+        *   `[Deploy Button]` → Generates immediately using the ad-hoc analyzed DNA.
+    *   The generated image is saved to "My Files" as usual.
+
+**B. Presets Panel (Library Mode Enhancement)**
+*   Add a new section: "My Presets" above the Blueprints picker.
+*   Horizontally scrollable list of saved presets (styled like Blueprint cards).
+*   Clicking a preset auto-selects Blueprint, Brand, Character, Intensity.
+*   Add a "Save Current as Preset" button next to the Deploy button.
+    *   Opens a small modal to name the preset.
+    *   Saves the current config combo to `presets` state.
+
+**C. Batch Mode (New Section)**
+*   In Batch Mode:
+    *   The user selects Blueprint/Brand/Character/Intensity **once**.
+    *   A large `<textarea>` appears for multi-line input (one brief per line), or a list-based input.
+    *   "Deploy All" button iterates through each line and generates a post.
+    *   A progress indicator shows `"Generating 3 of 10..."`.
+    *   Results are displayed in a grid below and can be saved individually or all at once.
+
+---
+
+### 3. Library Filtering
+
+#### [MODIFY] [components/Library.tsx](file:///Users/sanwidi/Desktop/1.Project/Creative%20Powerhouse/components/Library.tsx)
+
+*   **Category Filter Bar**: Add buttons/chips above the grid:
+    `All | Quote | Infographic | Product | Story | Carousel`.
+*   **Tag Display**: Show assigned tags on Blueprint cards.
+*   **CRUD for Tags in Detail Modal**: Allow editing category and tags when viewing a Blueprint's detail.
+
+---
+
+#### [MODIFY] [components/Builder.tsx](file:///Users/sanwidi/Desktop/1.Project/Creative%20Powerhouse/components/Builder.tsx) (Minor)
+
+*   After DNA analysis, add UI for user to assign a `category` and `tags` before saving.
+*   Default category can be AI-suggested based on `blueprint_type` (e.g., "carousel" → "Carousel").
+
+---
+
+### 4. Carousel Generator Alignment
+
+#### [MODIFY] [CarouselGenerator.tsx](file:///Users/sanwidi/Desktop/1.Project/Creative%20Powerhouse/components/CarouselGenerator.tsx)
+
+*   **Presets Panel**: Same as Generator—show and load presets.
+*   **Batch Mode is Inherent**: The Carousel Generator already works in batch (multiple slides). No changes needed for batch logic, but the Presets feature applies.
+
+---
+
+## Summary of Files Changed
+
+| File | Change Type | Key Additions |
+| :--- | :--- | :--- |
+| `types.ts` | Modify | `Preset` interface, `category/tags` on `DesignReference` |
+| `App.tsx` | Modify | `presets` state, save/delete preset functions |
+| `Generator.tsx` | Modify (Major) | Mode tabs, Quick Mode dropzone, Presets panel, Batch Mode |
+| `Library.tsx` | Modify | Category/Tag filter UI |
+| `Builder.tsx` | Modify (Minor) | Category/Tag assignment UI |
+| `CarouselGenerator.tsx` | Modify | Presets panel |
+
+---
 
 ## Verification Plan
 
-### Migration Verification
-1.  **Check Library**: Open the Library page.
-2.  **Verify Badges**: Ensure existing blueprints show the "Upgrade DNA" or "Refresh to Upgrade" badge.
-3.  **Perform Upgrade**: Click the refresh button on a blueprint.
-4.  **Verify Data**: Check the updated JSON in "Machine DNA Data" view. It should show the new "IGNORE THIS FIELD" text in the Visual DNA Prompt box.
+### Automated Tests
+*   **N/A**: This project does not appear to have an automated test suite. All verification will be manual.
 
-### Generation Verification
-1.  **Generate a Post**: Use the upgraded blueprint in the Generator.
-2.  **Verify Fidelity**: result should match the original layout perfectly (no drift).
+### Manual Verification
+
+#### Feature 1: Quick Mode
+1.  Open the Generator.
+2.  Click the "Quick" mode tab.
+3.  Drag and drop a design screenshot into the dropzone.
+4.  Observe: The app should show a loading state while analyzing the DNA.
+5.  Type a brief and click "Deploy".
+6.  Observe: A post should be generated.
+
+#### Feature 2: Presets
+1.  Open the Generator in "Library" mode.
+2.  Select a Blueprint, Brand, and set Intensity.
+3.  Click "Save as Preset".
+4.  Name it "My Quote Preset" and save.
+5.  Return to the Generator landing.
+6.  Observe: "My Quote Preset" should appear in the Presets carousel.
+7.  Click it.
+8.  Observe: Blueprint, Brand, and Intensity should auto-select.
+
+#### Feature 3: Batch Mode
+1.  Open the Generator.
+2.  Click the "Batch" mode tab.
+3.  Select a Blueprint.
+4.  Enter 3 briefs, one per line in the text area.
+5.  Click "Deploy All".
+6.  Observe: A progress indicator should show generation status.
+7.  Observe: 3 generated images should appear in a results grid.
+
+#### Feature 4: Smart Labels
+1.  Open the Builder.
+2.  Upload an image and analyze it.
+3.  Observe: A Category dropdown and Tags input should appear.
+4.  Select "Quote" and add tags "promo, sale".
+5.  Save the Blueprint.
+6.  Go to "My Files" -> Blueprints.
+7.  Observe: The category filter bar should be visible.
+8.  Click "Quote".
+9.  Observe: Only the newly created blueprint should be visible.

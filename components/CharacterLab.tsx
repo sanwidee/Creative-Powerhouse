@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Users, Upload, Loader2, Sparkles, Save, ArrowLeft, XCircle, CheckCircle2, AlertCircle, Palette as PaletteIcon, Eye, History } from 'lucide-react';
-import { analyzeCharacter, generateCharacterTurnaround, getTurnaroundPromptData } from '../services/geminiService';
+import { analyzeCharacter, generateCharacterTurnaround, getTurnaroundPromptData, evolveCharacterWithBrand } from '../services/geminiService';
 import { CharacterReference, CharacterDNA, BrandReference, PromptData } from '../types';
 import PromptPreviewModal from './PromptPreviewModal';
 
@@ -21,8 +21,12 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
     const [characterName, setCharacterName] = useState('');
     const [selectedStyle, setSelectedStyle] = useState<CharacterDNA['assigned_art_style']>('original');
     const [promptPreview, setPromptPreview] = useState<PromptData | null>(null);
-    const [status, setStatus] = useState<'idle' | 'analyzing' | 'generating' | 'success' | 'error'>('idle');
+    const [status, setStatus] = useState<'idle' | 'analyzing' | 'generating' | 'evolving' | 'success' | 'error'>('idle');
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Evolve Mode State
+    const [evolveMode, setEvolveMode] = useState(false);
+    const [evolveBrandId, setEvolveBrandId] = useState<string>('');
 
     // Load character DNA if selected
     useEffect(() => {
@@ -101,15 +105,31 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
                 identity_lock: true
             };
 
-            const turnaround = await generateCharacterTurnaround(dnaWithStyle, '16:9');
-            setTurnaroundImage(turnaround.image);
+            let turnaroundImage: string;
+            let finalDna: CharacterDNA;
 
-            // Update DNA with turnaround as first reference image and selected style
-            const updatedDna = {
-                ...dnaWithStyle,
-                reference_images: [turnaround.image, ...uploadedImages]
-            };
-            setDna(updatedDna);
+            // Check if brand is selected - use evolve with brand instead
+            const selectedBrand = evolveBrandId ? brands.find(b => b.id === evolveBrandId) : null;
+            if (selectedBrand) {
+                setStatus('evolving');
+                const result = await evolveCharacterWithBrand(dnaWithStyle, selectedBrand.dna, '16:9');
+                turnaroundImage = result.image;
+                finalDna = {
+                    ...result.evolvedDNA,
+                    reference_images: [result.image, ...uploadedImages]
+                };
+                setCharacterName(`${baseDna.character_name} (${selectedBrand.name} Edition)`);
+            } else {
+                const turnaround = await generateCharacterTurnaround(dnaWithStyle, '16:9');
+                turnaroundImage = turnaround.image;
+                finalDna = {
+                    ...dnaWithStyle,
+                    reference_images: [turnaround.image, ...uploadedImages]
+                };
+            }
+
+            setTurnaroundImage(turnaroundImage);
+            setDna(finalDna);
             setStatus('success');
         } catch (err: any) {
             console.error(err);
@@ -119,6 +139,7 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
             setIsAnalyzing(false);
         }
     };
+
 
     const handlePreviewTurnaroundPrompt = () => {
         if (!dna) return;
@@ -157,6 +178,34 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
     const updateDnaField = (field: keyof CharacterDNA, value: any) => {
         if (!dna) return;
         setDna({ ...dna, [field]: value });
+    };
+
+    const handleEvolveWithBrand = async () => {
+        if (!dna || !evolveBrandId) {
+            alert('Please select a character and a brand to evolve with.');
+            return;
+        }
+
+        const selectedBrand = brands.find(b => b.id === evolveBrandId);
+        if (!selectedBrand) return;
+
+        setIsAnalyzing(true);
+        setStatus('evolving');
+
+        try {
+            const result = await evolveCharacterWithBrand(dna, selectedBrand.dna, '16:9');
+            setDna(result.evolvedDNA);
+            setTurnaroundImage(result.image);
+            setCharacterName(`${dna.character_name} (${selectedBrand.name} Edition)`);
+            setStatus('success');
+            setEvolveMode(false);
+        } catch (err: any) {
+            console.error(err);
+            alert(err.message || 'Brand evolution failed.');
+            setStatus('error');
+        } finally {
+            setIsAnalyzing(false);
+        }
     };
 
     const artStyles: { id: CharacterDNA['assigned_art_style'], label: string, icon: string }[] = [
@@ -272,7 +321,7 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
 
                     {/* Art Style Selection */}
                     <div className="space-y-6">
-                        <div className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/50 h-full shadow-sm">
+                        <div className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/50 shadow-sm">
                             <h2 className="text-xl font-bold mb-4 flex items-center space-x-2 text-slate-900 dark:text-white">
                                 <Sparkles size={20} className="text-green-500 dark:text-green-400" />
                                 <span>2. Target Art Style</span>
@@ -305,7 +354,45 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
                                 <p className="text-[10px] text-blue-300 leading-relaxed font-semibold uppercase tracking-tighter">Identity Lock is ACTIVE. Features will remain consistent during style transformation.</p>
                             </div>
                         </div>
+
+                        {/* BRAND DNA SELECTION - Show when existing character selected */}
+                        {selectedCharacterId && brands.length > 0 && (
+                            <div className="p-6 rounded-2xl border border-pink-500/20 bg-gradient-to-br from-pink-500/5 to-indigo-500/5 shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <h2 className="text-xl font-bold mb-4 flex items-center space-x-2 text-slate-900 dark:text-white">
+                                    <PaletteIcon size={20} className="text-pink-500" />
+                                    <span>3. Brand Colors <span className="text-xs font-normal text-slate-500">(Optional)</span></span>
+                                </h2>
+                                <p className="text-slate-500 dark:text-slate-400 text-xs mb-4 uppercase tracking-wider font-bold">Apply brand palette to character</p>
+
+                                <select
+                                    value={evolveBrandId}
+                                    onChange={(e) => setEvolveBrandId(e.target.value)}
+                                    className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-pink-500/30 rounded-xl outline-none focus:ring-2 focus:ring-pink-500/50 text-sm text-slate-900 dark:text-white mb-4"
+                                >
+                                    <option value="">No brand (use original colors)</option>
+                                    {brands.map(brand => (
+                                        <option key={brand.id} value={brand.id}>{brand.name}</option>
+                                    ))}
+                                </select>
+
+                                {evolveBrandId && (
+                                    <div className="p-3 rounded-xl bg-pink-500/10 border border-pink-500/20 animate-in fade-in">
+                                        <div className="flex items-center space-x-3">
+                                            <div className="flex space-x-1">
+                                                {brands.find(b => b.id === evolveBrandId)?.dna.primary_colors.slice(0, 5).map((color, idx) => (
+                                                    <div key={idx} className="w-6 h-6 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: color }} />
+                                                ))}
+                                            </div>
+                                            <span className="text-xs text-pink-600 dark:text-pink-400 font-bold">
+                                                {brands.find(b => b.id === evolveBrandId)?.dna.brand_vibe}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
+
                 </div>
 
                 {/* Analyze Button */}
@@ -313,7 +400,7 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
                     <button
                         onClick={() => handleAnalyze()}
                         disabled={isAnalyzing}
-                        className="w-full py-6 bg-green-600 hover:bg-green-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-green-500/10 flex items-center justify-center space-x-3 mb-8"
+                        className={`w-full py-6 ${evolveBrandId ? 'bg-gradient-to-r from-pink-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500' : 'bg-green-600 hover:bg-green-500'} disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white rounded-2xl font-black text-xl transition-all shadow-xl shadow-green-500/10 flex items-center justify-center space-x-3 mb-8`}
                     >
                         {isAnalyzing ? (
                             <>
@@ -321,16 +408,25 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
                                 <span>
                                     {status === 'analyzing' && 'EXTRACTING DNA SIGNATURE...'}
                                     {status === 'generating' && 'GENERATING IDENTITY LOCK TURNAROUND...'}
-                                    {status !== 'analyzing' && status !== 'generating' && 'PROCESSING...'}
+                                    {status === 'evolving' && 'APPLYING BRAND COLORS...'}
+                                    {status !== 'analyzing' && status !== 'generating' && status !== 'evolving' && 'PROCESSING...'}
                                 </span>
                             </>
                         ) : (
                             <>
                                 <Sparkles size={24} />
-                                <span>{selectedCharacterId ? 'EVOLVE DNA & APPLY NEW STYLE' : 'EXTRACT DNA & GENERATE TURNAROUND'}</span>
+                                <span>
+                                    {selectedCharacterId
+                                        ? (evolveBrandId
+                                            ? `EVOLVE WITH ${brands.find(b => b.id === evolveBrandId)?.name?.toUpperCase() || 'BRAND'} COLORS`
+                                            : 'EVOLVE DNA & APPLY NEW STYLE')
+                                        : 'EXTRACT DNA & GENERATE TURNAROUND'
+                                    }
+                                </span>
                             </>
                         )}
                     </button>
+
                 )}
 
                 {/* DNA Results */}
@@ -380,21 +476,91 @@ const CharacterLab: React.FC<CharacterLabProps> = ({ onSave, onBack, brands = []
                                         </div>
                                     )}
 
-                                    {/* Link to Brand DNA */}
+                                    {/* EVOLVE WITH BRAND DNA */}
                                     {brands.length > 0 && (
-                                        <div className="p-6 rounded-2xl bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-                                            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">Brand DNA Association</label>
-                                            <select
-                                                value={dna.linked_brand_id || ''}
-                                                onChange={(e) => updateDnaField('linked_brand_id', e.target.value || undefined)}
-                                                className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500/50 text-sm text-slate-900 dark:text-white"
-                                            >
-                                                <option value="">No brand link</option>
-                                                {brands.map(brand => (
-                                                    <option key={brand.id} value={brand.id}>{brand.name}</option>
-                                                ))}
-                                            </select>
-                                            <p className="mt-2 text-[10px] text-slate-500">Connecting to Brand DNA inherits color logic and vibes for post generation.</p>
+                                        <div className="p-6 rounded-2xl bg-gradient-to-br from-pink-500/5 to-indigo-500/5 border border-pink-500/20">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <div className="flex items-center space-x-2">
+                                                    <PaletteIcon size={16} className="text-pink-500" />
+                                                    <span className="text-xs font-bold text-pink-600 dark:text-pink-400 uppercase tracking-widest">Evolve with Brand DNA</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => setEvolveMode(!evolveMode)}
+                                                    className={`text-[10px] font-bold px-3 py-1 rounded-lg transition-all ${evolveMode ? 'bg-pink-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}
+                                                >
+                                                    {evolveMode ? 'ACTIVE' : 'ENABLE'}
+                                                </button>
+                                            </div>
+
+                                            {evolveMode ? (
+                                                <div className="space-y-4 animate-in fade-in">
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                        Transform this character's colors and style to match a brand's visual identity while preserving their structural features.
+                                                    </p>
+                                                    <select
+                                                        value={evolveBrandId}
+                                                        onChange={(e) => setEvolveBrandId(e.target.value)}
+                                                        className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-pink-500/30 rounded-xl outline-none focus:ring-2 focus:ring-pink-500/50 text-sm text-slate-900 dark:text-white"
+                                                    >
+                                                        <option value="">Select a Brand...</option>
+                                                        {brands.map(brand => (
+                                                            <option key={brand.id} value={brand.id}>{brand.name}</option>
+                                                        ))}
+                                                    </select>
+
+                                                    {evolveBrandId && (
+                                                        <div className="p-3 rounded-xl bg-pink-500/10 border border-pink-500/20">
+                                                            <div className="flex items-center space-x-3">
+                                                                <div className="flex space-x-1">
+                                                                    {brands.find(b => b.id === evolveBrandId)?.dna.primary_colors.slice(0, 4).map((color, idx) => (
+                                                                        <div key={idx} className="w-6 h-6 rounded-full border border-white/20" style={{ backgroundColor: color }} />
+                                                                    ))}
+                                                                </div>
+                                                                <span className="text-xs text-pink-600 dark:text-pink-400 font-bold">
+                                                                    {brands.find(b => b.id === evolveBrandId)?.dna.brand_vibe}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <button
+                                                        onClick={handleEvolveWithBrand}
+                                                        disabled={!evolveBrandId || isAnalyzing}
+                                                        className="w-full py-4 bg-gradient-to-r from-pink-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 disabled:from-slate-700 disabled:to-slate-700 text-white rounded-2xl font-black text-sm transition-all flex items-center justify-center space-x-2 shadow-lg shadow-pink-500/20"
+                                                    >
+                                                        {status === 'evolving' ? (
+                                                            <>
+                                                                <Loader2 size={18} className="animate-spin" />
+                                                                <span>EVOLVING CHARACTER...</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Sparkles size={18} />
+                                                                <span>EVOLVE WITH BRAND</span>
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <p className="text-[10px] text-slate-500">
+                                                    Enable to create a brand-aligned version of this character with the brand's colors and aesthetic.
+                                                </p>
+                                            )}
+
+                                            {/* Simple Association (Legacy) */}
+                                            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700/50">
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Link (Metadata Only)</label>
+                                                <select
+                                                    value={dna.linked_brand_id || ''}
+                                                    onChange={(e) => updateDnaField('linked_brand_id', e.target.value || undefined)}
+                                                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none text-xs text-slate-900 dark:text-white"
+                                                >
+                                                    <option value="">No brand link</option>
+                                                    {brands.map(brand => (
+                                                        <option key={brand.id} value={brand.id}>{brand.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
                                         </div>
                                     )}
                                 </div>

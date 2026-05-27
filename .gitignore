@@ -26,5 +26,32 @@ dist-ssr
 *.sln
 *.sw?
 
-# Database
+# Database & User Data
 database/
+voice_dna/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+.eggs/
+
+# Voice Server
+voice_server/models/
+voice_server/temp/
+voice_server/*.pt
+*.pt
+*.bin
+
+# Artifacts
+.gemini/
+
+# macOS AppleDouble metadata
+._*
+.DS_Store
