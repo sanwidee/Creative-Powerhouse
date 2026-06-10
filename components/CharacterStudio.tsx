@@ -114,9 +114,9 @@ const CharacterStudio: React.FC<CharacterStudioProps> = ({ characters, onSave, o
                         <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
                             <Wand2 size={28} className="text-purple-400" />
                         </div>
-                        <h1 className="text-4xl font-bold text-slate-900 dark:text-white">Character Studio</h1>
+                        <h1 className="text-4xl font-bold text-slate-900 dark:text-white">Pose a character</h1>
                     </div>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">Generate character poses using saved DNA</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">Generate poses for a saved character.</p>
                 </div>
 
                 {/* Character Selection */}

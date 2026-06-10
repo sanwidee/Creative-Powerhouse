@@ -23,6 +23,74 @@ python main.py
 
 No test suite is configured in this project.
 
+## Chat-driven workflow (when Claude is the operator)
+
+You — Claude in this folder — are a parallel client to the app. The user can drive Creative Powerhouse via UI OR by chatting with you. Both clients share the same backend: the Express storage on `:3001` reading/writing JSON files in `database/`.
+
+**The CLI: `tools/powerhouse.mjs`**
+
+This is your primary interface for read/write/generate. It speaks to the storage API and Gemini.
+
+```bash
+# Read state
+node tools/powerhouse.mjs list brands
+node tools/powerhouse.mjs list brand_assets
+node tools/powerhouse.mjs get-brand qlipper        # by id or name substring
+
+# Plan content (Gemini text-gen)
+node tools/powerhouse.mjs plan-ideas --brief "AI productivity tips" --count 10
+node tools/powerhouse.mjs plan-ideas --brief "..." --count 14 --brand <brand_id> --save
+
+# Generate a brand asset (Gemini image-gen, saved to brand_assets)
+node tools/powerhouse.mjs gen-asset --brand <brand_id> \
+  --name "Scissor cut icon" \
+  --brief "minimal scissor silhouette, brand-aligned"
+# Add --dry-run to preview the prompt without spending quota.
+```
+
+**Collections** (all in `database/*.json`, persisted via POST /api/<name>):
+
+| Collection | Purpose |
+|---|---|
+| `references` | DesignReference[] — templates extracted from inspiration |
+| `brands` | BrandReference[] — brand DNAs |
+| `brand_assets` | BrandAsset[] — reusable visual elements per brand (logo, motif, decoration) |
+| `characters` | CharacterReference[] |
+| `character_poses` | GeneratedCharacterPose[] |
+| `posts` | GeneratedPost[] |
+| `carousels` | GeneratedCarousel[] |
+| `audio_voices` | AudioReference[] |
+| `presets` | Preset[] |
+| `feed_previews` | FeedPreviewProject[] |
+| `content_plans` | (new) Saved batch-idea plans |
+| `usage_logs` | Append-only Gemini usage log |
+
+Shapes are declared in `types.ts`.
+
+**Rules of engagement**:
+
+- **Ask before generating > 5 items in one call.** Each gen call costs the user quota/money. For one-off ideas (count ≤ 5) just go.
+- **Image generation is expensive.** Always confirm before `gen-asset`, and prefer `--dry-run` first if uncertain.
+- **Never write directly to `database/*.json`** — always POST through the storage API. Direct writes race with the running app.
+- **Reads via GET /api/<collection>** are safe and instant.
+- **The user's API key may be expired.** If a Gemini call 401/403s, tell the user to renew at https://aistudio.google.com/apikey and update `.env` — don't try other keys.
+- **Captions/copy must follow the humanizer rules** baked into `tools/powerhouse.mjs` (no em-dashes, no AI-tells, contractions on, vary sentence length).
+- **After writing data**, the user can see changes by reloading the relevant screen in the running app (or revisiting it).
+
+**Common chat patterns**:
+
+> "Hey Claude, give me 20 post ideas for the next 2 weeks about [topic]"
+→ Run `plan-ideas --brief "<topic>" --count 20`. Show ideas in chat. Ask if they want to `--save`.
+
+> "Hey Claude, list my Qlipper brand assets"
+→ Run `list brand_assets` and filter by brand, OR `get-brand qlipper`.
+
+> "Hey Claude, generate 3 more Qlipper assets that don't duplicate existing"
+→ Run `get-brand qlipper` to see existing → propose 3 distinct briefs → ask user to confirm → run `gen-asset` once per brief.
+
+> "Hey Claude, what's in my Library?"
+→ Run `list posts`, `list carousels`. Summarize.
+
 ## API Key Setup
 
 The app requires a Google Gemini API key. In development, create a `.env` file at the root:

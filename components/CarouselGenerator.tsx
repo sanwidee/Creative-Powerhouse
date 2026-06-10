@@ -235,9 +235,9 @@ const CarouselGenerator: React.FC<CarouselGeneratorProps> = ({ references, brand
                             <div className="p-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
                                 <Layers size={16} className="text-blue-400" />
                             </div>
-                            <h2 className="text-3xl font-bold tracking-tight">Carousel Generator</h2>
+                            <h2 className="text-3xl font-bold tracking-tight">Make a carousel</h2>
                         </div>
-                        <p className="text-slate-500 text-sm font-medium uppercase tracking-[0.2em]">Batch Production Pipeline</p>
+                        <p className="text-slate-500 text-sm font-medium uppercase tracking-[0.2em]">Multi-slide story</p>
                     </div>
                 </div>
 

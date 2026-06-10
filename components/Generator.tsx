@@ -349,8 +349,8 @@ const Generator: React.FC<GeneratorProps> = ({ references, brands, characters, p
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Post Generator</h2>
-            <p className="text-slate-500 dark:text-slate-400">Deploy content into design systems.</p>
+            <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Make a post</h2>
+            <p className="text-slate-500 dark:text-slate-400">Generative imagery + your saved templates and brands.</p>
           </div>
         </div>
 

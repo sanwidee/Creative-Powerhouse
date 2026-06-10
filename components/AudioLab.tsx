@@ -208,8 +208,8 @@ const AudioLab: React.FC<AudioLabProps> = ({ onSave, onBack, savedVoices, onDele
                         <ArrowLeft size={20} />
                     </button>
                     <div>
-                        <h2 className="text-3xl font-bold tracking-tight">Audio Lab</h2>
-                        <p className="text-slate-400">Clone your voice or design synthetic voices</p>
+                        <h2 className="text-3xl font-bold tracking-tight">Voice</h2>
+                        <p className="text-slate-400">Clone your voice or design a synthetic one.</p>
                     </div>
                 </div>
 

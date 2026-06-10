@@ -107,8 +107,8 @@ const Builder: React.FC<BuilderProps> = ({ onSave, onBack }) => {
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Design DNA Builder</h2>
-          <p className="text-slate-500 dark:text-slate-400">Deconstruct visuals into production logic.</p>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Templates</h2>
+          <p className="text-slate-500 dark:text-slate-400">Save inspiration as a reusable template.</p>
         </div>
       </div>
 

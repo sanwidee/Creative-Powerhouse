@@ -1,7 +1,9 @@
 import type { TemplateManifest } from './types';
 import { QuoteCardEditorialManifest } from './QuoteCardEditorial';
+import { QlipperHeroManifest } from './QlipperHero';
 
 export const TEMPLATES: TemplateManifest[] = [
+  QlipperHeroManifest,
   QuoteCardEditorialManifest,
 ];
 

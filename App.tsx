@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Wrench, Star, Rocket, Terminal, Github, Moon, Sun, Zap, Palette, ChevronRight, Key, Globe, Settings as SettingsIcon, Users, Wand2, Leaf, Layers, Volume2, BookOpen, Briefcase, Grid3X3, LayoutTemplate } from 'lucide-react';
-import { AppTool, DesignReference, BrandReference, GeneratedPost, CharacterReference, GeneratedCharacterPose, AudioReference, Preset, FeedPreviewProject, FeedPreviewState } from './types';
+import { Wrench, Star, Rocket, Terminal, Github, Moon, Sun, Zap, Palette, ChevronRight, Key, Globe, Settings as SettingsIcon, Users, Wand2, Leaf, Layers, Volume2, BookOpen, Briefcase, Grid3X3, LayoutTemplate, Lightbulb, Sparkles, CalendarDays, X, Library as LibraryIcon, PanelLeftClose, PanelLeftOpen, Image as ImageIcon } from 'lucide-react';
+import { AppTool, DesignReference, BrandReference, GeneratedPost, CharacterReference, GeneratedCharacterPose, AudioReference, Preset, FeedPreviewProject, FeedPreviewState, BrandAsset, ContentPlan } from './types';
 import Builder from './components/Builder';
 import Library from './components/Library';
 import Generator from './components/Generator';
@@ -16,6 +16,8 @@ import Documentation from './components/Documentation';
 import BrandStudio from './components/BrandStudio';
 import FeedPreview from './components/FeedPreview';
 import Studio from './components/Studio';
+import BrandAssetManager from './components/BrandAssetManager';
+import PlanQueue from './components/PlanQueue';
 
 
 // Branding Assets
@@ -61,6 +63,8 @@ const App: React.FC = () => {
   const [audioVoices, setAudioVoices] = useState<AudioReference[]>([]);
   const [presets, setPresets] = useState<Preset[]>([]);
   const [feedPreviews, setFeedPreviews] = useState<FeedPreviewProject[]>([]);
+  const [brandAssets, setBrandAssets] = useState<BrandAsset[]>([]);
+  const [contentPlans, setContentPlans] = useState<ContentPlan[]>([]);
   const [activeFeedPreviewId, setActiveFeedPreviewId] = useState<string>(() => {
     if (typeof localStorage === 'undefined') return '';
     return localStorage.getItem('ikhsan_active_feed_preview') || '';
@@ -68,7 +72,20 @@ const App: React.FC = () => {
   const [hasKey, setHasKey] = useState<boolean | null>(null);
   const [manualKey, setManualKey] = useState('');
   const [isStandalone, setIsStandalone] = useState(false);
-  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
+    if (typeof localStorage === 'undefined') return true;
+    const saved = localStorage.getItem('ikhsan_sidebar_open');
+    return saved === null ? true : saved === 'true';
+  });
+  const toggleSidebar = () => {
+    setIsSidebarOpen((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('ikhsan_sidebar_open', String(next)); } catch {}
+      return next;
+    });
+  };
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isDocsOpen, setIsDocsOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof localStorage !== 'undefined' && localStorage.getItem('ikhsan_theme')) {
       return localStorage.getItem('ikhsan_theme') as 'light' | 'dark';
@@ -127,6 +144,8 @@ const App: React.FC = () => {
         const remoteVoices = await fetchCollection('audio_voices');
         const remotePresets = await fetchCollection('presets');
         const remoteFeedPreviewsRaw = await fetchCollection('feed_previews');
+        const remoteBrandAssets = await fetchCollection('brand_assets');
+        const remoteContentPlans = await fetchCollection('content_plans');
 
         let remoteFeedPreviews: FeedPreviewProject[] = Array.isArray(remoteFeedPreviewsRaw)
           ? (remoteFeedPreviewsRaw as any[]).filter((p) => p && typeof p === 'object' && typeof p.id === 'string' && typeof p.name === 'string' && p.state && typeof p.state === 'object') as FeedPreviewProject[]
@@ -195,10 +214,11 @@ const App: React.FC = () => {
         }
 
         setCharacters(remoteChars);
-        setCharacters(remoteChars);
         setCharacterPoses(remoteCharPoses);
         setAudioVoices(remoteVoices);
         setPresets(remotePresets);
+        setBrandAssets(remoteBrandAssets);
+        setContentPlans(remoteContentPlans);
       } catch (err) {
         console.error("Critical failure in loadData:", err);
       }
@@ -242,10 +262,51 @@ const App: React.FC = () => {
     saveData('brands', updated);
   };
 
+  const updateContentPlan = (plan: ContentPlan) => {
+    const updated = contentPlans.map((p) => (p.id === plan.id ? plan : p));
+    setContentPlans(updated);
+    saveData('content_plans', updated);
+  };
+
+  const saveBrandAsset = (asset: BrandAsset) => {
+    const updated = [asset, ...brandAssets];
+    setBrandAssets(updated);
+    saveData('brand_assets', updated);
+  };
+
+  const saveBrandAssetsBulk = (assets: BrandAsset[]) => {
+    const updated = [...assets, ...brandAssets];
+    setBrandAssets(updated);
+    saveData('brand_assets', updated);
+  };
+
+  const updateBrandAsset = (asset: BrandAsset) => {
+    const updated = brandAssets.map((a) => (a.id === asset.id ? asset : a));
+    setBrandAssets(updated);
+    saveData('brand_assets', updated);
+  };
+
+  const deleteBrandAsset = (id: string) => {
+    const updated = brandAssets.filter((a) => a.id !== id);
+    setBrandAssets(updated);
+    saveData('brand_assets', updated);
+  };
+
   const saveGeneratedPost = (post: GeneratedPost) => {
-    const updated = [post, ...generatedPosts];
-    setGeneratedPosts(updated);
-    saveData('posts', updated);
+    setGeneratedPosts((prev) => {
+      const updated = [post, ...prev];
+      saveData('posts', updated);
+      return updated;
+    });
+  };
+
+  const saveGeneratedPostsBulk = (posts: GeneratedPost[]) => {
+    if (posts.length === 0) return;
+    setGeneratedPosts((prev) => {
+      const updated = [...posts, ...prev];
+      saveData('posts', updated);
+      return updated;
+    });
   };
 
   const saveGeneratedCarousel = (carousel: any) => {
@@ -453,6 +514,30 @@ const App: React.FC = () => {
         return <Builder onSave={saveReference} onBack={() => setActiveTool(AppTool.LANDING)} />;
       case AppTool.STUDIO:
         return <Studio onSavePost={saveGeneratedPost} onBack={() => setActiveTool(AppTool.LANDING)} />;
+      case AppTool.BRAND_ASSETS:
+        return (
+          <BrandAssetManager
+            brands={brands}
+            assets={brandAssets}
+            onSaveBulk={saveBrandAssetsBulk}
+            onUpdate={updateBrandAsset}
+            onDelete={deleteBrandAsset}
+            onBack={() => setActiveTool(AppTool.LANDING)}
+          />
+        );
+      case AppTool.PLAN_QUEUE:
+        return (
+          <PlanQueue
+            plans={contentPlans}
+            brands={brands}
+            brandAssets={brandAssets}
+            generatedPosts={generatedPosts}
+            onUpdatePlan={updateContentPlan}
+            onSavePost={saveGeneratedPost}
+            onSavePostsBulk={saveGeneratedPostsBulk}
+            onBack={() => setActiveTool(AppTool.LANDING)}
+          />
+        );
       case AppTool.LIBRARY:
         return (
           <Library
@@ -536,70 +621,161 @@ const App: React.FC = () => {
       case AppTool.AUDIO_LAB:
         return <AudioLab onSave={saveAudioVoice} onBack={() => setActiveTool(AppTool.LANDING)} savedVoices={audioVoices} onDelete={deleteAudioVoice} />;
       case AppTool.SETTINGS:
-        return (
-          <Settings
-            currentKey={localStorage.getItem('IKHSAN_LAB_KEY') || manualKey || ''}
-            onUpdateKey={(key) => {
-              localStorage.setItem('IKHSAN_LAB_KEY', key);
-              setManualKey(key);
-              setHasKey(true);
-            }}
-            onBack={() => setActiveTool(AppTool.LANDING)}
-          />
-        );
       case AppTool.DOCS:
-        return <Documentation onBack={() => setActiveTool(AppTool.LANDING)} />;
+        // Settings/Docs are now overlay sheets — fall through to landing.
+        return renderLanding();
       default:
-        return (
-          <div className="max-w-6xl mx-auto px-6 py-12 animate-in fade-in zoom-in duration-700">
-            <header className="mb-20 text-center relative">
-              <div className="flex justify-center mb-8">
-                <div className="p-1 rounded-[2.5rem] bg-gradient-to-b from-green-500/20 to-transparent border border-green-500/10 shadow-2xl">
-                  <img src={LOGO_SRC} className="w-24 h-24 object-contain animate-pulse-slow" alt="Weed Labs" />
-                </div>
-              </div>
-              <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-green-500/5 border border-green-500/10 mb-6 backdrop-blur-sm">
-                <span className="text-[10px] font-bold text-green-500 uppercase tracking-[0.3em]">Advanced AI Production Suite</span>
-              </div>
-              <h1 className="text-6xl md:text-8xl font-black mb-8 tracking-tighter italic">
-                WEED <span className="text-green-500">LABS</span>
-              </h1>
-              <p className="max-w-2xl mx-auto text-slate-500 dark:text-slate-400 text-lg font-medium leading-relaxed">
-                The ultimate cyber-botanical production suite. <span className="text-slate-900 dark:text-slate-200">Extract DNA, cultivate content, and maintain perfect consistency.</span>
-              </p>
-            </header>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <ToolCard icon={<LayoutTemplate className="text-pink-400" />} title="Studio" desc="Programmable templates. Pixel-perfect output." onClick={() => setActiveTool(AppTool.STUDIO)} accent="pink" />
-              <ToolCard icon={<Briefcase className="text-orange-400" />} title="Brand Studio" desc="Campaign Hub. Asset → Post at scale." onClick={() => setActiveTool(AppTool.BRAND_STUDIO)} accent="orange" />
-              <ToolCard icon={<Wrench className="text-blue-400" />} title="Design Builder" desc="Extract Structural DNA." onClick={() => setActiveTool(AppTool.BUILDER)} accent="blue" />
-              <ToolCard icon={<Palette className="text-pink-400" />} title="Brand Identity" desc="Save Color DNA." onClick={() => setActiveTool(AppTool.BRAND_LAB)} accent="pink" />
-              <ToolCard icon={<Users className="text-green-400" />} title="Character Lab" desc="Extract Character DNA." onClick={() => setActiveTool(AppTool.CHARACTER_LAB)} accent="green" />
-              <ToolCard icon={<Star className="text-cyan-400" />} title="My Files" desc="Manage Results." onClick={() => setActiveTool(AppTool.LIBRARY)} accent="cyan" />
-              <ToolCard icon={<Rocket className="text-indigo-400" />} title="Post Generator" desc="Deploy & Remix." onClick={() => setActiveTool(AppTool.GENERATOR)} accent="indigo" />
-              <ToolCard icon={<Grid3X3 className="text-pink-400" />} title="Feed Preview" desc="Mock your Instagram grid." onClick={() => setActiveTool(AppTool.FEED_PREVIEW)} accent="pink" />
-              <ToolCard icon={<Layers className="text-blue-400" />} title="Carousel Generator" desc="Multiple Slides." onClick={() => setActiveTool(AppTool.CAROUSEL_GENERATOR)} accent="blue" />
-              <ToolCard icon={<Wand2 className="text-purple-400" />} title="Character Studio" desc="Generate Poses." onClick={() => setActiveTool(AppTool.CHARACTER_STUDIO)} accent="purple" />
-              <ToolCard icon={<Volume2 className="text-pink-400" />} title="Audio Lab" desc="Synthesize Voice." onClick={() => setActiveTool(AppTool.AUDIO_LAB)} accent="pink" />
-            </div>
-          </div>
-        );
+        return renderLanding();
     }
   };
 
-  const menuItems = [
-    { tool: AppTool.STUDIO, icon: <LayoutTemplate size={20} />, label: "Studio", color: "pink" },
-    { tool: AppTool.BRAND_STUDIO, icon: <Briefcase size={20} />, label: "Brand Studio", color: "orange" },
-    { tool: AppTool.BUILDER, icon: <Wrench size={20} />, label: "Builder", color: "blue" },
-    { tool: AppTool.BRAND_LAB, icon: <Palette size={20} />, label: "Brand Lab", color: "pink" },
-    { tool: AppTool.CHARACTER_LAB, icon: <Users size={20} />, label: "Char Lab", color: "green" },
-    { tool: AppTool.LIBRARY, icon: <Star size={20} />, label: "My Files", color: "cyan" },
-    { tool: AppTool.GENERATOR, icon: <Rocket size={20} />, label: "Generator", color: "indigo" },
-    { tool: AppTool.FEED_PREVIEW, icon: <Grid3X3 size={20} />, label: "Feed", color: "pink" },
-    { tool: AppTool.CAROUSEL_GENERATOR, icon: <Layers size={20} />, label: "Carousels", color: "blue" },
-    { tool: AppTool.CHARACTER_STUDIO, icon: <Wand2 size={20} />, label: "Char Studio", color: "purple" },
-    { tool: AppTool.AUDIO_LAB, icon: <Volume2 size={20} />, label: "Audio", color: "pink" },
+  const renderLanding = () => {
+    const counts = {
+      templates: references.length,
+      brands: brands.length,
+      characters: characters.length,
+      posts: generatedPosts.length,
+      carousels: generatedCarousels.length,
+    };
+
+    return (
+      <div className="max-w-6xl mx-auto px-6 py-12 animate-in fade-in zoom-in duration-700">
+        <header className="mb-12 text-center relative">
+          <div className="flex justify-center mb-6">
+            <div className="p-1 rounded-[2rem] bg-gradient-to-b from-pink-500/20 to-transparent border border-pink-500/10 shadow-2xl">
+              <img src={LOGO_SRC} className="w-20 h-20 object-contain animate-pulse-slow" alt="Creative Powerhouse" />
+            </div>
+          </div>
+          <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-pink-500/5 border border-pink-500/10 mb-5 backdrop-blur-sm">
+            <Sparkles size={11} className="text-pink-500" />
+            <span className="text-[10px] font-bold text-pink-500 uppercase tracking-[0.3em]">AI Content Powerhouse</span>
+          </div>
+          <h1 className="text-5xl md:text-6xl font-black mb-4 tracking-tighter">
+            Creative <span className="text-pink-500">Powerhouse</span>
+          </h1>
+          <p className="max-w-xl mx-auto text-slate-500 dark:text-slate-400 text-base font-medium leading-relaxed">
+            Inspiration in. Posts out. Three steps.
+          </p>
+          {(counts.templates + counts.brands + counts.characters + counts.posts) > 0 && (
+            <div className="mt-6 inline-flex items-center gap-5 px-5 py-2.5 rounded-full bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-[11px] font-mono text-slate-600 dark:text-slate-300">
+              <span>{counts.templates} templates</span>
+              <span className="text-slate-300 dark:text-slate-700">·</span>
+              <span>{counts.brands} brands</span>
+              <span className="text-slate-300 dark:text-slate-700">·</span>
+              <span>{counts.characters} characters</span>
+              <span className="text-slate-300 dark:text-slate-700">·</span>
+              <span>{counts.posts} posts</span>
+              <span className="text-slate-300 dark:text-slate-700">·</span>
+              <span>{counts.carousels} carousels</span>
+            </div>
+          )}
+        </header>
+
+        <div className="flex flex-col lg:flex-row items-stretch gap-6 lg:gap-3">
+          <div className="flex-1 min-w-0">
+            <SpaceCard
+              step="01"
+              accent="violet"
+              icon={<Lightbulb size={28} />}
+              title="Inspire"
+              blurb="Save what catches your eye. Turn screenshots into reusable templates, brands, and characters."
+              actions={[
+                { label: 'Save as template', sub: `${counts.templates} saved`, onClick: () => setActiveTool(AppTool.BUILDER) },
+                { label: 'Save as brand', sub: `${counts.brands} saved`, onClick: () => setActiveTool(AppTool.BRAND_LAB) },
+                { label: 'Manage brand assets', sub: `${brandAssets.length} assets`, onClick: () => setActiveTool(AppTool.BRAND_ASSETS) },
+                { label: 'Save as character', sub: `${counts.characters} saved`, onClick: () => setActiveTool(AppTool.CHARACTER_LAB) },
+              ]}
+            />
+          </div>
+
+          <FlowArrow from="violet" to="pink" />
+
+          <div className="flex-1 min-w-0">
+            <SpaceCard
+              step="02"
+              accent="pink"
+              icon={<Sparkles size={28} />}
+              title="Create"
+              blurb="Make posts that look like you. Programmable templates for repeatable output, generative when you need imagery."
+              actions={[
+                { label: 'Make a post — template', sub: 'Pixel-perfect, instant', onClick: () => setActiveTool(AppTool.STUDIO) },
+                { label: 'Make a post — generative', sub: 'AI imagery', onClick: () => setActiveTool(AppTool.GENERATOR) },
+                { label: 'Make a carousel', sub: 'Multi-slide stories', onClick: () => setActiveTool(AppTool.CAROUSEL_GENERATOR) },
+                { label: 'Make from asset', sub: 'Brand-driven remix', onClick: () => setActiveTool(AppTool.BRAND_STUDIO) },
+                { label: 'Pose a character', sub: 'Use saved characters', onClick: () => setActiveTool(AppTool.CHARACTER_STUDIO) },
+                { label: 'Voice', sub: 'Synthesize or clone', onClick: () => setActiveTool(AppTool.AUDIO_LAB) },
+              ]}
+            />
+          </div>
+
+          <FlowArrow from="pink" to="cyan" />
+
+          <div className="flex-1 min-w-0">
+            <SpaceCard
+              step="03"
+              accent="cyan"
+              icon={<CalendarDays size={28} />}
+              title="Plan"
+              blurb="See everything you made. Drop posts onto a feed and schedule them. Publishing comes next."
+              actions={[
+                { label: 'Queue', sub: `${contentPlans.reduce((n, p) => n + p.ideas.length, 0)} scheduled · ${contentPlans.length} plans`, onClick: () => setActiveTool(AppTool.PLAN_QUEUE) },
+                { label: 'Library', sub: `${counts.posts} posts · ${counts.carousels} carousels`, onClick: () => setActiveTool(AppTool.LIBRARY) },
+                { label: 'Instagram grid', sub: 'Draft your feed', onClick: () => setActiveTool(AppTool.FEED_PREVIEW) },
+              ]}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const menuGroups: { id: string; label: string; icon: React.ReactNode; color: string; items: { tool: AppTool; icon: React.ReactNode; label: string }[] }[] = [
+    {
+      id: 'inspire',
+      label: 'Inspire',
+      icon: <Lightbulb size={20} />,
+      color: 'violet',
+      items: [
+        { tool: AppTool.BUILDER, icon: <LayoutTemplate size={16} />, label: 'Templates' },
+        { tool: AppTool.BRAND_LAB, icon: <Palette size={16} />, label: 'Brands' },
+        { tool: AppTool.BRAND_ASSETS, icon: <ImageIcon size={16} />, label: 'Brand assets' },
+        { tool: AppTool.CHARACTER_LAB, icon: <Users size={16} />, label: 'Characters' },
+      ],
+    },
+    {
+      id: 'create',
+      label: 'Create',
+      icon: <Sparkles size={20} />,
+      color: 'pink',
+      items: [
+        { tool: AppTool.STUDIO, icon: <LayoutTemplate size={16} />, label: 'Post — template' },
+        { tool: AppTool.GENERATOR, icon: <Rocket size={16} />, label: 'Post — generative' },
+        { tool: AppTool.CAROUSEL_GENERATOR, icon: <Layers size={16} />, label: 'Carousel' },
+        { tool: AppTool.BRAND_STUDIO, icon: <Briefcase size={16} />, label: 'From asset' },
+        { tool: AppTool.CHARACTER_STUDIO, icon: <Wand2 size={16} />, label: 'Pose character' },
+        { tool: AppTool.AUDIO_LAB, icon: <Volume2 size={16} />, label: 'Voice' },
+      ],
+    },
+    {
+      id: 'plan',
+      label: 'Plan',
+      icon: <CalendarDays size={20} />,
+      color: 'cyan',
+      items: [
+        { tool: AppTool.PLAN_QUEUE, icon: <CalendarDays size={16} />, label: 'Queue' },
+        { tool: AppTool.LIBRARY, icon: <LibraryIcon size={16} />, label: 'Library' },
+        { tool: AppTool.FEED_PREVIEW, icon: <Grid3X3 size={16} />, label: 'Instagram grid' },
+      ],
+    },
   ];
+
+  const findGroupForTool = (tool: AppTool): string | null => {
+    for (const g of menuGroups) {
+      if (g.items.some((i) => i.tool === tool)) return g.id;
+    }
+    return null;
+  };
+  const activeGroupId = findGroupForTool(activeTool);
 
   return (
     <div className={`min-h-screen relative ${theme === 'dark' ? 'bg-[#020617] text-slate-100' : 'bg-[#F8FAFC] text-slate-900'} flex overflow-hidden transition-colors duration-500`}>
@@ -616,45 +792,68 @@ const App: React.FC = () => {
       {/* Sidebar Navigation (Conditional) */}
       {activeTool !== AppTool.LANDING && (
         <aside
-          className={`h-screen border-r border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-[#020617] backdrop-blur-xl z-[100] transition-all duration-500 flex flex-col items-center py-6 shrink-0 relative ${isSidebarHovered ? 'w-64' : 'w-20'}`}
-          onMouseEnter={() => setIsSidebarHovered(true)}
-          onMouseLeave={() => setIsSidebarHovered(false)}
+          className={`h-screen border-r border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-[#020617] backdrop-blur-xl z-[100] transition-all duration-300 flex flex-col items-center py-6 shrink-0 relative ${isSidebarOpen ? 'w-64' : 'w-20'}`}
         >
-          <div onClick={() => setActiveTool(AppTool.LANDING)} className="mb-10 cursor-pointer group px-4 w-full flex items-center justify-center">
-            <div className={`transition-all duration-500 flex items-center ${isSidebarHovered ? 'space-x-4 w-full' : 'justify-center'}`}>
+          <button
+            onClick={toggleSidebar}
+            className="absolute -right-3 top-8 z-10 w-6 h-6 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-md hover:shadow-lg flex items-center justify-center text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition"
+            title={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+          >
+            {isSidebarOpen ? <PanelLeftClose size={12} /> : <PanelLeftOpen size={12} />}
+          </button>
+          <div onClick={() => setActiveTool(AppTool.LANDING)} className="mb-8 cursor-pointer group px-4 w-full flex items-center justify-center">
+            <div className={`transition-all duration-500 flex items-center ${isSidebarOpen ? 'space-x-3 w-full' : 'justify-center'}`}>
               <img src={LOGO_SRC} className="w-10 h-10 object-contain group-hover:scale-110 transition-transform" />
-              {isSidebarHovered && <span className="font-black text-xl tracking-tighter italic animate-in fade-in slide-in-from-left duration-300">WEED <span className="text-green-500">LABS</span></span>}
+              {isSidebarOpen && <span className="font-black text-base tracking-tighter animate-in fade-in slide-in-from-left duration-300 text-slate-900 dark:text-white">Creative <span className="text-pink-500">Powerhouse</span></span>}
             </div>
           </div>
 
-          <nav className="flex-1 space-y-2 w-full px-4 overflow-y-auto no-scrollbar">
-            {menuItems.map((item) => (
-              <button
-                key={item.tool}
-                onClick={() => setActiveTool(item.tool)}
-                className={`w-full group flex items-center transition-all duration-300 rounded-2xl p-4 ${activeTool === item.tool
-                  ? `bg-white dark:bg-slate-800 text-green-600 dark:text-white shadow-xl shadow-green-900/5 dark:shadow-none border border-green-100 dark:border-slate-700`
-                  : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900/50 hover:text-slate-900 dark:hover:text-slate-200'
-                  } ${isSidebarHovered ? 'space-x-4' : 'justify-center'}`}
-              >
-                <div className={`transition-transform duration-300 ${activeTool === item.tool ? 'scale-110' : 'group-hover:scale-110'}`}>
-                  {React.cloneElement(item.icon as React.ReactElement, {
-                    className: activeTool === item.tool ? `text-${item.color}-500 dark:text-${item.color}-400` : 'text-slate-400 dark:text-slate-600 group-hover:text-slate-600 dark:group-hover:text-slate-400'
-                  })}
+          <nav className="flex-1 w-full px-3 overflow-y-auto no-scrollbar">
+            {menuGroups.map((group) => {
+              const isActiveGroup = activeGroupId === group.id;
+              return (
+                <div key={group.id} className="mb-5">
+                  {isSidebarOpen ? (
+                    <div className={`px-2 mb-1.5 flex items-center gap-2`}>
+                      <div className={`text-${group.color}-500`}>{group.icon}</div>
+                      <span className={`text-[10px] font-black tracking-[0.25em] uppercase text-${group.color}-500`}>
+                        {group.label}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className={`mx-auto mb-1.5 w-10 h-10 rounded-2xl flex items-center justify-center ${isActiveGroup ? `bg-${group.color}-500/10 text-${group.color}-500` : 'text-slate-400 dark:text-slate-600'}`}>
+                      {group.icon}
+                    </div>
+                  )}
+                  <div className="space-y-0.5">
+                    {group.items.map((item) => {
+                      const isActive = activeTool === item.tool;
+                      if (!isSidebarOpen) return null;
+                      return (
+                        <button
+                          key={item.tool}
+                          onClick={() => setActiveTool(item.tool)}
+                          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all text-xs font-semibold ${
+                            isActive
+                              ? `bg-${group.color}-500/10 text-${group.color}-600 dark:text-${group.color}-400`
+                              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
+                          }`}
+                        >
+                          {item.icon}
+                          <span className="truncate">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                {isSidebarHovered && (
-                  <span className="text-xs font-bold uppercase tracking-widest whitespace-nowrap animate-in fade-in slide-in-from-left duration-300">
-                    {item.label}
-                  </span>
-                )}
-              </button>
-            ))}
+              );
+            })}
           </nav>
 
           <div className="mt-auto px-4 w-full space-y-2">
             <button
               onClick={toggleTheme}
-              className={`w-full group flex items-center transition-all duration-300 rounded-2xl p-4 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 ${isSidebarHovered ? 'space-x-4' : 'justify-center'}`}
+              className={`w-full group flex items-center transition-all duration-300 rounded-2xl p-4 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 ${isSidebarOpen ? 'space-x-4' : 'justify-center'}`}
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
             >
               {theme === 'dark' ? (
@@ -662,7 +861,7 @@ const App: React.FC = () => {
               ) : (
                 <Moon size={20} className="text-slate-400 group-hover:text-slate-600" />
               )}
-              {isSidebarHovered && (
+              {isSidebarOpen && (
                 <span className="text-xs font-bold uppercase tracking-widest whitespace-nowrap animate-in fade-in slide-in-from-left duration-300">
                   {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
                 </span>
@@ -670,12 +869,12 @@ const App: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setActiveTool(AppTool.DOCS)}
-              className={`w-full group flex items-center transition-all duration-300 rounded-2xl p-4 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 ${isSidebarHovered ? 'space-x-4' : 'justify-center'}`}
+              onClick={() => setIsDocsOpen(true)}
+              className={`w-full group flex items-center transition-all duration-300 rounded-2xl p-4 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 ${isSidebarOpen ? 'space-x-4' : 'justify-center'}`}
               title="Documentation"
             >
               <BookOpen size={20} className="text-slate-400 dark:text-slate-600 group-hover:text-orange-500 dark:group-hover:text-orange-400" />
-              {isSidebarHovered && (
+              {isSidebarOpen && (
                 <span className="text-xs font-bold uppercase tracking-widest whitespace-nowrap animate-in fade-in slide-in-from-left duration-300">
                   Docs
                 </span>
@@ -683,12 +882,12 @@ const App: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setActiveTool(AppTool.SETTINGS)}
-              className={`w-full group flex items-center transition-all duration-300 rounded-2xl p-4 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 ${isSidebarHovered ? 'space-x-4' : 'justify-center'}`}
+              onClick={() => setIsSettingsOpen(true)}
+              className={`w-full group flex items-center transition-all duration-300 rounded-2xl p-4 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 ${isSidebarOpen ? 'space-x-4' : 'justify-center'}`}
               title="Settings"
             >
               <SettingsIcon size={20} className="text-slate-400 dark:text-slate-600 group-hover:text-slate-600 dark:group-hover:text-slate-400" />
-              {isSidebarHovered && (
+              {isSidebarOpen && (
                 <span className="text-xs font-bold uppercase tracking-widest whitespace-nowrap animate-in fade-in slide-in-from-left duration-300">
                   Settings
                 </span>
@@ -701,19 +900,18 @@ const App: React.FC = () => {
       <main className="flex-1 flex flex-col min-w-0 h-screen">
         {activeTool === AppTool.LANDING && (
           <nav className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-md sticky top-0 z-50 px-8 h-20 flex items-center justify-between shrink-0">
-            <div onClick={() => setActiveTool(AppTool.LANDING)} className="flex items-center space-x-4 cursor-pointer">
+            <div onClick={() => setActiveTool(AppTool.LANDING)} className="flex items-center space-x-3 cursor-pointer">
               <img src={LOGO_SRC} className="w-10 h-10 object-contain" />
-              <span className="font-black text-2xl tracking-tighter italic text-slate-900 dark:text-white">WEED <span className="text-green-500">LABS</span></span>
+              <span className="font-black text-xl tracking-tighter text-slate-900 dark:text-white">Creative <span className="text-pink-500">Powerhouse</span></span>
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
               <button
-                onClick={() => setActiveTool(AppTool.DOCS)}
-                className="p-3 rounded-2xl bg-white/50 hover:bg-white dark:bg-slate-800/50 dark:hover:bg-slate-800 text-slate-500 hover:text-orange-500 dark:text-slate-400 dark:hover:text-orange-400 transition-all border border-slate-200 dark:border-slate-700/50 flex items-center space-x-2"
+                onClick={() => setIsDocsOpen(true)}
+                className="p-3 rounded-2xl bg-white/50 hover:bg-white dark:bg-slate-800/50 dark:hover:bg-slate-800 text-slate-500 hover:text-orange-500 dark:text-slate-400 dark:hover:text-orange-400 transition-all border border-slate-200 dark:border-slate-700/50"
                 title="Documentation & Guides"
               >
                 <BookOpen size={20} />
-                <span className="text-xs font-bold uppercase tracking-widest hidden sm:inline">Docs</span>
               </button>
 
               <button
@@ -729,11 +927,11 @@ const App: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setActiveTool(AppTool.SETTINGS)}
-                className="p-3 rounded-2xl bg-slate-100/50 hover:bg-slate-200 dark:bg-slate-800/50 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all border border-slate-200 dark:border-slate-700/50 flex items-center space-x-3"
+                onClick={() => setIsSettingsOpen(true)}
+                className="p-3 rounded-2xl bg-slate-100/50 hover:bg-slate-200 dark:bg-slate-800/50 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-all border border-slate-200 dark:border-slate-700/50"
+                title="Settings"
               >
                 <SettingsIcon size={20} />
-                <span className="text-xs font-bold uppercase tracking-widest hidden sm:inline">Settings</span>
               </button>
             </div>
           </nav>
@@ -743,6 +941,48 @@ const App: React.FC = () => {
           {renderTool()}
         </div>
       </main>
+
+      {/* Settings overlay sheet */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 z-[200] flex items-start justify-end animate-in fade-in duration-200" onClick={() => setIsSettingsOpen(false)}>
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
+          <div className="relative h-full w-full max-w-2xl bg-white dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setIsSettingsOpen(false)}
+              className="absolute top-5 right-5 z-10 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition"
+              title="Close"
+            >
+              <X size={18} />
+            </button>
+            <Settings
+              currentKey={localStorage.getItem('IKHSAN_LAB_KEY') || manualKey || ''}
+              onUpdateKey={(key) => {
+                localStorage.setItem('IKHSAN_LAB_KEY', key);
+                setManualKey(key);
+                setHasKey(true);
+              }}
+              onBack={() => setIsSettingsOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Documentation overlay sheet */}
+      {isDocsOpen && (
+        <div className="fixed inset-0 z-[200] flex items-start justify-end animate-in fade-in duration-200" onClick={() => setIsDocsOpen(false)}>
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
+          <div className="relative h-full w-full max-w-4xl bg-white dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800 shadow-2xl overflow-y-auto animate-in slide-in-from-right duration-300" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setIsDocsOpen(false)}
+              className="absolute top-5 right-5 z-10 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition"
+              title="Close"
+            >
+              <X size={18} />
+            </button>
+            <Documentation onBack={() => setIsDocsOpen(false)} />
+          </div>
+        </div>
+      )}
 
       <AssistantHub />
 
@@ -775,8 +1015,77 @@ const getAccentClasses = (accent: string) => {
     indigo: { light: 'hover:shadow-indigo-500/20', dark: 'dark:hover:border-indigo-500/50', icon: 'text-indigo-500', border: 'border-indigo-500/10' },
     purple: { light: 'hover:shadow-purple-500/20', dark: 'dark:hover:border-purple-500/50', icon: 'text-purple-500', border: 'border-purple-500/10' },
     orange: { light: 'hover:shadow-orange-500/20', dark: 'dark:hover:border-orange-500/50', icon: 'text-orange-500', border: 'border-orange-500/10' },
+    violet: { light: 'hover:shadow-violet-500/20', dark: 'dark:hover:border-violet-500/50', icon: 'text-violet-500', border: 'border-violet-500/10' },
   };
   return map[accent] || map.blue;
+};
+
+interface SpaceAction {
+  label: string;
+  sub: string;
+  onClick: () => void;
+}
+
+const SpaceCard: React.FC<{
+  step?: string;
+  accent: string;
+  icon: React.ReactNode;
+  title: string;
+  blurb: string;
+  actions: SpaceAction[];
+}> = ({ step, accent, icon, title, blurb, actions }) => {
+  const styles = getAccentClasses(accent);
+  return (
+    <div className={`
+      relative overflow-hidden group p-7 rounded-[2rem] transition-all duration-500 flex flex-col h-full
+      border
+      bg-white/70 backdrop-blur-2xl border-white/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]
+      hover:shadow-2xl ${styles.light}
+      dark:bg-slate-900/40 dark:border-slate-800 dark:shadow-none
+      ${styles.dark} dark:hover:bg-slate-900/60
+    `}>
+      <div className={`absolute -right-24 -top-24 w-64 h-64 bg-gradient-to-br from-${accent}-500/15 to-transparent blur-[80px] opacity-60 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none`} />
+
+      <div className="flex items-center justify-between mb-4 relative">
+        <div className={`p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 ${styles.icon}`}>
+          {icon}
+        </div>
+        <div className="flex items-center gap-2">
+          {step && <span className={`text-[10px] font-mono ${styles.icon} opacity-60`}>{step}</span>}
+          <span className={`text-[10px] font-black tracking-[0.3em] uppercase ${styles.icon}`}>{title}</span>
+        </div>
+      </div>
+
+      <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed mb-5 min-h-[60px]">{blurb}</p>
+
+      <div className="space-y-2">
+        {actions.map((action, i) => (
+          <button
+            key={i}
+            onClick={action.onClick}
+            className="w-full text-left p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all group/btn flex items-center justify-between"
+          >
+            <div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white">{action.label}</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-500">{action.sub}</div>
+            </div>
+            <ChevronRight size={16} className={`${styles.icon} opacity-0 group-hover/btn:opacity-100 group-hover/btn:translate-x-1 transition-all`} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const FlowArrow: React.FC<{ from: string; to: string }> = ({ from, to }) => {
+  return (
+    <div className="flex lg:flex-col items-center justify-center px-1 lg:px-0 lg:py-0 self-stretch" aria-hidden="true">
+      <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+        <ChevronRight size={18} className={`text-${to}-500 lg:rotate-0 rotate-90 hidden lg:block`} />
+        <ChevronRight size={18} className={`text-${to}-500 rotate-90 lg:hidden`} />
+      </div>
+    </div>
+  );
 };
 
 const ToolCard = ({ icon, title, desc, onClick, accent }: any) => {

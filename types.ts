@@ -169,11 +169,140 @@ export interface DesignReference {
   createdAt: number;
 }
 
+export interface BrandVisualIdentity {
+  bg_dark: string;          // hex, e.g. '#000000' for dark theme bg
+  bg_light: string;         // hex, e.g. '#EFE8D7' for light theme bg
+  ink_dark: string;         // text on dark bg
+  ink_light: string;        // text on light bg
+  sub_ink_dark?: string;    // muted text on dark
+  sub_ink_light?: string;   // muted text on light
+  accent_color: string;     // primary accent (CTA, highlights)
+  accent_color_2?: string;  // secondary accent
+  cta_text_default: string; // e.g. "Coba Qlipper sekarang"
+  font_family_serif?: string;
+  font_family_sans?: string;
+}
+
+export interface BrandVoiceProfile {
+  tagline?: string;
+  signature_phrases?: string[];
+  banned_phrases?: string[];
+  target_audience?: string;
+  language_default?: 'bahasa' | 'english' | 'mixed';
+  tone?: string; // free-form description
+}
+
 export interface BrandReference {
   id: string;
   name: string;
   imageSource: string;
   dna: BrandDNA;
+  guidelines?: string;
+  visual_identity?: BrandVisualIdentity;
+  voice_profile?: BrandVoiceProfile;
+  createdAt: number;
+}
+
+export type SocialPlatform = 'instagram' | 'tiktok' | 'twitter' | 'threads' | 'linkedin';
+
+export interface SocialAccount {
+  id: string;
+  brand_id: string;
+  platform: SocialPlatform;
+  handle: string;            // e.g. 'qlipper.ai'
+  account_id: string;        // for IG: IG Business Account ID, e.g. '17841...'
+  access_token: string;
+  fb_page_id?: string;       // for IG/FB
+  api_version?: string;      // e.g. 'v21.0'
+  enabled: boolean;
+  created_at: number;
+}
+
+export type BrandAssetSource = 'upload' | 'gemini-gen';
+
+export interface BrandAsset {
+  id: string;
+  brand_id: string;
+  name: string;
+  dataUrl: string;
+  source: BrandAssetSource;
+  prompt?: string;
+  tags: string[];
+  createdAt: number;
+}
+
+export type PostIdeaFormat = 'quote' | 'stat' | 'listicle' | 'hook' | 'cta' | 'carousel';
+export type PostIdeaTheme = 'dark' | 'light';
+export type PostIdeaStatus = 'draft' | 'approved' | 'rendered' | 'scheduled' | 'published' | 'failed';
+// SocialPlatform defined earlier alongside SocialAccount
+
+export type SlideType = 'cover' | 'body';
+export type BodySlideStyle = 'explainer' | 'bullets' | 'stat' | 'testimonial';
+
+export interface ChatMessage {
+  from: 'incoming' | 'outgoing';
+  sender?: string;      // shown above bubble for group-style (optional)
+  text: string;
+  time: string;         // formatted, e.g. "10:07 PM"
+  checks?: boolean;     // double-blue read receipt for outgoing
+}
+
+export interface PostSlide {
+  slide_index: number;
+  slide_type: SlideType;
+  theme: PostIdeaTheme;
+  body_style?: BodySlideStyle;
+  // Cover content
+  headline?: string;
+  subhead?: string;
+  cta_text?: string;
+  // Body content
+  body_label?: string;     // small uppercase label at top of body slide
+  body_heading?: string;   // bold heading on body slide
+  body_text?: string;      // long-form for 'explainer' style
+  body_bullets?: string[]; // for 'bullets' style
+  body_stat?: string;      // big number for 'stat' style
+  body_stat_label?: string; // text under/around the stat
+  // Testimonial content
+  testimonial_label?: string;          // small uppercase header, e.g. "ASLI DARI USER"
+  testimonial_messages?: ChatMessage[]; // 2-5 chat bubbles
+  // Asset hint (renderer picks if not specified)
+  asset_keyword?: string;
+  rendered_post_id?: string;
+}
+
+export interface PostIdea {
+  id: string;
+  topic: string;
+  headline: string;
+  format: PostIdeaFormat;
+  theme: PostIdeaTheme;
+  caption_draft: string;
+  hashtags: string[];
+  scheduled_at?: number;
+  scheduled_at_iso?: string;
+  target_platforms?: SocialPlatform[];
+  status: PostIdeaStatus;
+  rendered_post_id?: string;
+  // When present, this is a multi-slide carousel. The cover slide may mirror the
+  // top-level headline/theme for back-compat.
+  slides?: PostSlide[];
+}
+
+export interface ContentPlan {
+  id: string;
+  name: string;
+  brief: string;
+  brand_id: string | null;
+  schedule?: {
+    posts_per_day?: number;
+    days?: number;
+    start_utc?: number;
+    timezone?: string;
+    morning_slot_wib?: string;
+    evening_slot_wib?: string;
+  };
+  ideas: PostIdea[];
   createdAt: number;
 }
 
@@ -247,6 +376,8 @@ export enum AppTool {
   FEED_PREVIEW = 'feed_preview',
   CAROUSEL_GENERATOR = 'carousel_generator',
   BRAND_LAB = 'brand_lab',
+  BRAND_ASSETS = 'brand_assets',
+  PLAN_QUEUE = 'plan_queue',
   CHARACTER_LAB = 'character_lab',
   CHARACTER_STUDIO = 'character_studio',
   AUDIO_LAB = 'audio_lab',
